@@ -1,0 +1,75 @@
+{
+  "manifestVersion": 1,
+  "deleteUnknownMods": true,
+  "files": [
+    {
+      "path": "mods/sodium-fabric-0.6.13+mc1.21.1.jar",
+      "sha256": "E04599514D88E41765F710EEBA59E3814909833396BC11B977F48FC2E7E50353",
+      "source": "modrinth",
+      "project": "sodium",
+      "version": "mc1.21.1-0.6.13-fabric"
+    },
+    {
+      "path": "mods/fabric-api-0.116.15+1.21.1.jar",
+      "sha256": "A61A10F730AB8AA45FF42486EE65699E6E51C28A0C168DEB161E7D4029473AA3",
+      "source": "modrinth",
+      "project": "fabric-api",
+      "version": "0.116.15+1.21.1",
+      "resource": "PiriCraft.Mods.fabric-api.jar"
+    },
+    {
+      "path": "mods/appleskin-fabric-mc1.21-3.0.6.jar",
+      "sha256": "9A19CEC1294B1BC708392A08E6926DCB85D7378EC5AD909A4B6FCB8BC3BFEAA2",
+      "source": "modrinth",
+      "project": "appleskin",
+      "version": "3.0.6+mc1.21",
+      "resource": "PiriCraft.Mods.appleskin.jar"
+    },
+    {
+      "path": "mods/iris-fabric-1.8.8+mc1.21.1.jar",
+      "sha256": "B5AD39A6CB113CA0A1765F06689F9F4B29CCD0C81247DE90B06C42F5DA1092F5",
+      "source": "modrinth",
+      "project": "iris",
+      "version": "1.8.8+1.21.1-fabric",
+      "resource": "PiriCraft.Mods.iris.jar"
+    },
+    {
+      "path": "mods/jei-1.21.1-fabric-19.44.0.403.jar",
+      "sha256": "3176AE9F05ED0000CF8ED1A4EFFD0CF349556B54686EF02A03CBB88492235002",
+      "source": "modrinth",
+      "project": "jei",
+      "version": "19.44.0.403",
+      "resource": "PiriCraft.Mods.jei.jar"
+    },
+    {
+      "path": "mods/ObsidianUI-fabric-0.2.9+mc1.21.1.jar",
+      "sha256": "4A19B5E2038D440C42009E4E9A35E4C2B019EFA14BD33ADCFAAE134A6921E328",
+      "source": "modrinth",
+      "project": "obsidianui",
+      "version": "0.2.9+mc1.21.1-fabric",
+      "resource": "PiriCraft.Mods.obsidianui.jar"
+    },
+    {
+      "path": "mods/RyoamicLights-fabric-0.2.11+mc1.21.1.jar",
+      "sha256": "868A31D5E7E66745CFAA33E75E1B036291B03761404F6B1F11777FCDD734A3E0",
+      "source": "modrinth",
+      "project": "ryoamiclights",
+      "version": "0.2.11+mc1.21.1-fabric",
+      "resource": "PiriCraft.Mods.ryoamiclights.jar"
+    },
+    {
+      "path": "mods/stutterfix-mc1.21-0.2.3.jar",
+      "sha256": "5CBEA2A6BF5A92BF536D5EEBE1530C42AAFB46FCBC11E72271D096DEBF302F6D",
+      "source": "modrinth",
+      "project": "stutterfix",
+      "version": "mc1.21-0.2.3",
+      "resource": "PiriCraft.Mods.stutterfix.jar"
+    },
+    {
+      "path": "mods/piricraft-check-1.0.0.jar",
+      "sha256": "F35F65E0F196646CA91C4B7E1F9BE529D777C82007950797F6D0243FDA03BA46",
+      "source": "embedded",
+      "resource": "PiriCraft.Mods.piricraft-check.jar"
+    }
+  ]
+}

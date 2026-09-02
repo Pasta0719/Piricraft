@@ -71,5 +71,11 @@
       "source": "embedded",
       "resource": "PiriCraft.Mods.piricraft-check.jar"
     }
-  ]
+  ],
+  "launcher": {
+    "version": "1.1.0",
+    "url": "https://github.com/Pasta0719/Piricraft/releases/download/launcher-v1.1.0/PiriCraft.exe",
+    "sha256": "364C99226E0880A456CFC098538698DB2BCA4552EF616B1B1D3F8A9CD3AE7824",
+    "size": 90540763
+  }
 }

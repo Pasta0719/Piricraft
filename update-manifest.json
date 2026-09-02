@@ -1,6 +1,12 @@
 {
   "manifestVersion": 1,
   "deleteUnknownMods": true,
+  "launcher": {
+    "version": "1.1.0",
+    "url": "https://github.com/Pasta0719/Piricraft/releases/download/launcher-v1.1.0/PiriCraft.exe",
+    "sha256": "364C99226E0880A456CFC098538698DB2BCA4552EF616B1B1D3F8A9CD3AE7824",
+    "size": 90540763
+  },
   "files": [
     {
       "path": "mods/sodium-fabric-0.6.13+mc1.21.1.jar",
@@ -66,16 +72,32 @@
       "resource": "PiriCraft.Mods.stutterfix.jar"
     },
     {
+      "path": "mods/entityculling-fabric-1.8.2-mc1.21.jar",
+      "sha256": "8649C93BE0CE20655742ADB24BAC097A9AEEC50B8C1BC8ED78BFE1DA7636E8FA",
+      "source": "modrinth",
+      "project": "entityculling",
+      "version": "1.8.2",
+      "resource": "PiriCraft.Mods.entityculling.jar"
+    },
+    {
+      "path": "mods/ferritecore-7.0.0-fabric.jar",
+      "sha256": "2C31200D1F5DE6A3CF5EDC4C3D39200636E1E060C4B548DCF8249EF487660323",
+      "source": "modrinth",
+      "project": "ferrite-core",
+      "version": "7.0.0-fabric",
+      "resource": "PiriCraft.Mods.ferritecore.jar"
+    },
+    {
+      "path": "mods/HarpyInput-1.0.4.jar",
+      "sha256": "97A72906695388C6CB5CEA522A0F9422AD9C83409219C111EF81C69B208FDFE8",
+      "source": "embedded",
+      "resource": "PiriCraft.Mods.harpyinput.jar"
+    },
+    {
       "path": "mods/piricraft-check-1.0.0.jar",
-      "sha256": "F35F65E0F196646CA91C4B7E1F9BE529D777C82007950797F6D0243FDA03BA46",
+      "sha256": "0410D7205FAE31007450DB70C3FF00A598CB0C38B330D2E5DF516353037DF54A",
       "source": "embedded",
       "resource": "PiriCraft.Mods.piricraft-check.jar"
     }
-  ],
-  "launcher": {
-    "version": "1.1.0",
-    "url": "https://github.com/Pasta0719/Piricraft/releases/download/launcher-v1.1.0/PiriCraft.exe",
-    "sha256": "364C99226E0880A456CFC098538698DB2BCA4552EF616B1B1D3F8A9CD3AE7824",
-    "size": 90540763
-  }
+  ]
 }

@@ -2,10 +2,10 @@
   "manifestVersion": 1,
   "deleteUnknownMods": true,
   "launcher": {
-    "version": "1.1.9",
-    "url": "https://github.com/Pasta0719/Piricraft/releases/download/launcher-v1.1.9/PiriCraft.exe",
-    "sha256": "E8C9B2A3DB4918DB2DA566C3257B4033682CB9501FA9C96E9E6589D38ED27EED",
-    "size": 97510107
+    "version": "1.1.10",
+    "url": "https://github.com/Pasta0719/Piricraft/releases/download/launcher-v1.1.10/PiriCraft.exe",
+    "sha256": "C7B27F523FC42FC99322439AD1B44CDBD372FBEEBA323F4C24119BED4EC294BA",
+    "size": 97524957
   },
   "files": [
     {
@@ -95,7 +95,7 @@
     },
     {
       "path": "mods/piri-juggler-fabric-1.0.0.jar",
-      "sha256": "33768E3CAB6817B3B3CD849A0747DD9FF0229C6BABE25DA9E55A7C33EDB9878C",
+      "sha256": "EE089BA038327511D7BFFF580881C2C1C165976A4611A11ACCE805158A140FE7",
       "source": "embedded",
       "resource": "PiriCraft.Mods.pirijuggler.jar"
     },

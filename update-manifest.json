@@ -2,9 +2,9 @@
   "manifestVersion": 1,
   "deleteUnknownMods": true,
   "launcher": {
-    "version": "1.1.12",
-    "url": "https://github.com/Pasta0719/Piricraft/releases/download/launcher-v1.1.12/PiriCraft.exe",
-    "sha256": "768ED388681CC358A2A72AA6981680F4663AB570F7ABF0CB9586C5C038131C2D",
+    "version": "1.1.13",
+    "url": "https://github.com/Pasta0719/Piricraft/releases/download/launcher-v1.1.13/PiriCraft.exe",
+    "sha256": "055940E6EA584AB08D408CF88FE51A6FE449938F2DCFC52EB149E0626A56A3DB",
     "size": 97528029
   },
   "files": [
@@ -88,8 +88,8 @@
       "resource": "PiriCraft.Mods.ferritecore.jar"
     },
     {
-      "path": "mods/HarpyInput-1.0.4.jar",
-      "sha256": "97A72906695388C6CB5CEA522A0F9422AD9C83409219C111EF81C69B208FDFE8",
+      "path": "mods/HarpyInput-1.1.0.jar",
+      "sha256": "81560F1A99D58C3E67F12070F675263557EFAE8CCFF64656112346030439CDCC",
       "source": "embedded",
       "resource": "PiriCraft.Mods.harpyinput.jar"
     },

@@ -14,6 +14,13 @@ class Program {
       if(args.Length<2) throw new Exception("inspect <dll>, or patch <dll> <dll-out> <manifest-in> <manifest-out> <jar> <mode> <target> <version> <repo>");
       using var assembly=AssemblyDefinition.ReadAssembly(args[1],new ReaderParameters{ReadingMode=ReadingMode.Deferred});
       var res=assembly.MainModule.Resources.OfType<EmbeddedResource>().ToArray();
+      if(args[0]=="export") {
+        if(args.Length!=4)throw new Exception("export <dll> <resource-name> <destination>");
+        var embedded=res.SingleOrDefault(x=>x.Name==args[2])??throw new Exception("Resource absent: "+args[2]);
+        File.WriteAllBytes(args[3],embedded.GetResourceData());
+        Console.WriteLine("EXPORTED_RESOURCE "+args[2]+" SHA256="+Sha(embedded.GetResourceData()));
+        return 0;
+      }
       if(args[0]=="inspect") {
         Console.WriteLine("ASSEMBLY_VERSION "+assembly.Name.Version);
         foreach(var r in res) Console.WriteLine($"RESOURCE {r.Name} {r.GetResourceData().Length}");

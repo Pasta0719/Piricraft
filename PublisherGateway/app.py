@@ -165,7 +165,16 @@ class GitHub:
 
     async def delete_staging(self, release_id: int, tag: str):
         await self.call("DELETE", f"/repos/{REPO}/releases/{release_id}")
-        await self.call("DELETE", f"/repos/{REPO}/git/refs/tags/{tag}")
+        # Draft releases do not necessarily create their Git tag until published.
+        try:
+            await self.call("DELETE", f"/repos/{REPO}/git/refs/tags/{tag}")
+        except GitHubError:
+            log.info("Staging release deleted; its draft tag may not exist: %s", tag)
+
+    async def find_staging(self, tag: str):
+        # GitHub's /releases/tags/{tag} can return 404 for DRAFT releases.
+        listing = await self.call("GET", f"/repos/{REPO}/releases?per_page=100")
+        return next((r for r in listing if r.get("tag_name") == tag and r.get("draft")), None)
 
 @app.exception_handler(GitHubError)
 async def github_error_handler(_request: Request, exc: GitHubError):

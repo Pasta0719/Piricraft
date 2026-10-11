@@ -32,7 +32,7 @@ jobs:
       - name: Build actual standalone EXE
         shell: pwsh
         run: |
-          dotnet publish PiriCraftModPublisher/Publisher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishReadyToRun=false -p:PublishTrimmed=false -o publisher-dist
+          dotnet publish PiriCraftModPublisher/Publisher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishReadyToRun=false -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false -o publisher-dist
           if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
           Get-ChildItem publisher-dist | Select-Object Name,Length | Format-Table
           $files=Get-ChildItem publisher-dist -File

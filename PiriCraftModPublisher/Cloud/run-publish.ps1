@@ -72,7 +72,25 @@ if($p.HasExited){
 $crashes=Get-WinEvent -FilterHashtable @{LogName='Application';StartTime=$begin;Id=1026} -ErrorAction SilentlyContinue | Where-Object { $_.ProviderName -eq '.NET Runtime' -and $_.Message -match 'PiriCraft' }
 if($crashes){$crashes | ForEach-Object {Write-Host $_.Message};throw 'Windows runtime crash - nothing published'}
 Write-Host 'CLOUD_BUILD_AND_WINDOWS_STARTUP_PASS'
-if($dry){Write-Host 'DRY_RUN_COMPLETE: no release or automatic update changes';exit 0}
+if($dry){
+  # Verify a SECOND consecutive update is possible without any local sources.
+  $nextParts=$new.Split('.')
+  $nextParts[2]=[string]([int]$nextParts[2]+1)
+  $following=$nextParts -join '.'
+  $currentTarget="mods/$filename"
+  dotnet run --project PiriCraftModPublisher/ServerBuilder/PiriCraftPatch.csproj -c Release -- patch work/PiriCraft.updated.dll work/PiriCraft.follow.dll work/updated-manifest.json work/follow-manifest.json $jar update $currentTarget $following $repo "launcher-v$following"
+  if($LASTEXITCODE -ne 0){throw 'Second consecutive update failed'}
+  python PiriCraftModPublisher/ServerBuilder/repack.py --base dist/PiriCraft.exe --dll work/PiriCraft.follow.dll --out dist/PiriCraft.follow.exe --old $new --new $following
+  if($LASTEXITCODE -ne 0){throw 'Consecutive launcher repack failed'}
+  $again=Start-Process -FilePath (Resolve-Path 'dist/PiriCraft.follow.exe').Path -PassThru
+  Start-Sleep -Seconds 5
+  $again.Refresh()
+  if($again.HasExited -and $again.ExitCode -ne 0){throw 'Follow-up update launcher failed startup'}
+  if(!$again.HasExited){Stop-Process -Id $again.Id -Force -ErrorAction SilentlyContinue}
+  Write-Host 'DRY_ADD_THEN_UPDATE_AND_RESTART_PASS'
+  Write-Host 'DRY_RUN_COMPLETE: no release or automatic update changes'
+  exit 0
+}
 $confirmed=gh api "repos/$repo/contents/update-manifest.json" | ConvertFrom-Json
 if($confirmed.sha -ne $release.sha){throw 'Official MOD list changed during build; refusing to publish stale update'}
 $allReleases=gh release list --repo $repo --limit 100 --json tagName | ConvertFrom-Json

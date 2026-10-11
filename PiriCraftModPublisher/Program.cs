@@ -21,7 +21,12 @@ internal static class Program {
         }
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
-        try { Application.Run(new Window()); return 0; }
+        try {
+            var i=Array.IndexOf(args,"--integration-test");
+            var testJar=i>=0 && i+1<args.Length?args[i+1]:null;
+            if(i>=0 && testJar==null)throw new ArgumentException("Integration test JAR missing");
+            Application.Run(new Window(testJar)); return Environment.ExitCode;
+        }
         catch(Exception e) {
             var dir=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"PiriCraftModPublisher");
             Directory.CreateDirectory(dir);File.AppendAllText(Path.Combine(dir,"crash.log"),e+"\r\n");
@@ -49,8 +54,10 @@ internal sealed class Window : Form {
     readonly Button auth=new(){Text="GitHubにログイン",Width=165};
     readonly System.Collections.Generic.List<string> paths=new();
     string? gh;bool running;
+    readonly string? integrationJar;
 
-    public Window() {
+    public Window(string? integrationJar=null) {
+        this.integrationJar=integrationJar;
         Text="PiriCraft MOD Publisher v4.0";Font=new Font("Yu Gothic UI",10);
         ClientSize=new Size(925,730);MinimumSize=new Size(805,660);
         StartPosition=FormStartPosition.CenterScreen;BackColor=Color.FromArgb(247,249,253);
@@ -85,7 +92,7 @@ internal sealed class Window : Form {
         load.Click+=async(_,_)=>await Reload();
         auth.Click+=async(_,_)=>await Login();
         submit.Click+=async(_,_)=>await Publish();
-        Shown+=async(_,_)=>{await Reload();await CheckAuth();};
+        Shown+=async(_,_)=>{await Reload();await CheckAuth();if(this.integrationJar!=null){adding.Checked=true;jar.Text=this.integrationJar;await Publish();}};
         FormClosing+=(_,e)=>{if(running){e.Cancel=true;MessageBox.Show(this,"公開処理中はウィンドウを閉じられません。","PiriCraft");}};
     }
     static Control Row(TextBox box,Button button) {
@@ -180,23 +187,25 @@ internal sealed class Window : Form {
             var selected=updating.Checked?paths[mods.SelectedIndex]:"";
             var action=updating.Checked?"既存MODを更新":"新しいMODを追加";
             var expectedHash=Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(localJar)));
-            if(MessageBox.Show(this,$"{action}\n更新元：{(updating.Checked?selected:"新規追加")}\n新しいファイル：{filename}\nSHA256：{expectedHash}\n\nGitHubにアップロードし、EXE・Checkをビルドして自動更新を公開します。","確認",MessageBoxButtons.YesNo,MessageBoxIcon.Question)!=DialogResult.Yes)return;
+            if(integrationJar==null && MessageBox.Show(this,$"{action}\n更新元：{(updating.Checked?selected:"新規追加")}\n新しいファイル：{filename}\nSHA256：{expectedHash}\n\nGitHubにアップロードし、EXE・Checkをビルドして自動更新を公開します。","確認",MessageBoxButtons.YesNo,MessageBoxIcon.Question)!=DialogResult.Yes)return;
             Busy(true);
             var x=await Gh(true);
             await GhRun(x,"auth","status");
             // Write permission is held by this collaborator's own GitHub identity, never by shared owner credentials.
-            var who=await GhRun(x,"api","user","--jq",".login");
-            Log("作業者: "+who.Trim()+" / 公開先: "+Repo);
-            var access=await GhRun(x,"api","repos/"+Repo+"/collaborators/"+who.Trim()+"/permission","--jq",".permission");
-            if(!new[]{"admin","maintain","write"}.Contains(access.Trim(),StringComparer.OrdinalIgnoreCase))
-                throw new Exception("このGitHubアカウントにはPiriCraftリポジトリの書込権限がありません");
+            if(integrationJar==null){
+                var who=await GhRun(x,"api","user","--jq",".login");
+                Log("作業者: "+who.Trim()+" / 公開先: "+Repo);
+                var access=await GhRun(x,"api","repos/"+Repo+"/collaborators/"+who.Trim()+"/permission","--jq",".permission");
+                if(!new[]{"admin","maintain","write"}.Contains(access.Trim(),StringComparer.OrdinalIgnoreCase))
+                    throw new Exception("このGitHubアカウントにはPiriCraftリポジトリの書込権限がありません");
+            } else {Log("Integration test mode: Actions job uses scoped GitHub token");}
             var stage="publisher-input-"+DateTimeOffset.UtcNow.ToUnixTimeSeconds()+"-"+Guid.NewGuid().ToString("N")[..8];
             State("1/4 新しいJARをGitHubへ転送中...");
             Log("受け渡し領域を作成: "+stage);
             await GhRun(x,"release","create",stage,"--repo",Repo,"--draft","--target","main","--title","MOD input "+stage,"--notes","Temporary staging asset. Automatically built by PiriCraft MOD Publisher.");
             await GhRun(x,"release","upload",stage,localJar,"--repo",Repo);
             State("2/4 GitHubにビルドを依頼中...");
-            await GhRun(x,"workflow","run","publish-mod-from-app.yml","--repo",Repo,"--ref","main","-f","mode="+(updating.Checked?"update":"add"),"-f","target="+selected,"-f","stage_tag="+stage,"-f","filename="+filename,"-f","sha256="+expectedHash);
+            await GhRun(x,"workflow","run","publish-mod-from-app.yml","--repo",Repo,"--ref","main","-f","mode="+(updating.Checked?"update":"add"),"-f","target="+selected,"-f","stage_tag="+stage,"-f","filename="+filename,"-f","sha256="+expectedHash,"-f","dry_run="+(integrationJar!=null?"true":"false"));
             State("3/4 GitHubでEXE・Checkをビルドし、Windows起動テストを実行中...");
             Log("クラウドビルド開始。このPCにソース、dotnet、Java、Gradleは不要です。");
             string? runId=null;
@@ -212,14 +221,15 @@ internal sealed class Window : Form {
                 if(statusVal!="completed")continue;
                 var conclusion=matched.GetProperty("conclusion").GetString();
                 if(conclusion!="success")throw new Exception("GitHubビルド失敗: "+conclusion+"。詳細: https://github.com/"+Repo+"/actions/runs/"+runId);
-                State("4/4 公開成功。ランチャーの自動更新が有効です。");
+                State(integrationJar!=null?"4/4 テスト成功（本番公開は変更なし）":"4/4 公開成功。ランチャーの自動更新が有効です。");
                 Log("完成: https://github.com/"+Repo+"/actions/runs/"+runId);
                 try{await GhRun(x,"release","delete",stage,"--repo",Repo,"--yes","--cleanup-tag");}catch(Exception e){Log("一時アップロードの自動削除失敗（公開には影響しません）: "+e.Message);}
+                if(integrationJar!=null){Log("APP_TO_GITHUB_ACTIONS_END_TO_END_PASSED");Environment.ExitCode=0;Close();return;}
                 MessageBox.Show(this,"ランチャーとCheckのビルド、公開、自動更新の設定が完了しました。","公開成功");
                 await Reload();return;
             }
             throw new Exception("GitHubの処理状況を確認できませんでした。一時領域は残ります。GitHub Actionsで確認してください。");
-        } catch(Exception e){State("更新失敗。公開状況をログで確認してください。");Log("ERROR "+e);MessageBox.Show(this,e.Message,"更新失敗");}
+        } catch(Exception e){State("更新失敗。公開状況をログで確認してください。");Log("ERROR "+e);if(integrationJar!=null){Environment.ExitCode=1;Close();}else MessageBox.Show(this,e.Message,"更新失敗");}
         finally{if(running)Busy(false);}
     }
 

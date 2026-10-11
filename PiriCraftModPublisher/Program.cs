@@ -45,7 +45,7 @@ internal sealed class Window : Form {
     readonly Label hash=new(){AutoSize=true};
     readonly Label title=new(){AutoSize=true};
     readonly TextBox output=new(){Multiline=true,ScrollBars=ScrollBars.Vertical,ReadOnly=true,Dock=DockStyle.Fill,Font=new Font("Consolas",9)};
-    readonly Button submit=new(){Text="更新する  →  EXE・Check・GitHub公開・自動更新",Height=48,Dock=DockStyle.Fill,BackColor=Color.FromArgb(30,94,181),ForeColor=Color.White};
+    readonly Button submit=new(){Text="更新する  →  GitHubでEXE・Checkを生成して自動更新",Height=48,Dock=DockStyle.Fill,BackColor=Color.FromArgb(30,94,181),ForeColor=Color.White};
     readonly Button load=new(){Text="一覧を更新",Width=116};
     readonly Button auth=new(){Text="GitHubにログイン",Width=165};
     readonly System.Collections.Generic.List<string> paths=new();
@@ -63,7 +63,7 @@ internal sealed class Window : Form {
             check.Text=d.RootElement.GetProperty("check").GetString()??check.Text;
         }catch{}
         var panel=new TableLayoutPanel{Dock=DockStyle.Fill,Padding=new Padding(23,15,23,15),ColumnCount=1,RowCount=11};
-        foreach(var h in new[]{50,30,57,35,42,35,42,35,42,58,0})panel.RowStyles.Add(new RowStyle(h==0?SizeType.Percent:SizeType.Absolute,h==0?100:h));
+        foreach(var h in new[]{50,30,57,35,42,35,42,0,0,0,0})panel.RowStyles.Add(new RowStyle(h==0?SizeType.Percent:SizeType.Absolute,h==0?100:h));
         Controls.Add(panel);
         panel.Controls.Add(new Label{Text="PiriCraft MOD Publisher",Font=new Font("Yu Gothic UI",19,FontStyle.Bold),AutoSize=true},0,0);
         title.Text="GitHubの正規MOD一覧を読み込みます";panel.Controls.Add(title,0,1);
@@ -73,21 +73,14 @@ internal sealed class Window : Form {
         mods.Dock=DockStyle.Fill;panel.Controls.Add(mods,0,4);
         panel.Controls.Add(new Label{Text="今回入れる新しいMOD（あなたのPC内のJAR）",AutoSize=true},0,5);
         panel.Controls.Add(Row(jar,Pick("JARを選択",()=>ChooseJar())),0,6);
-        panel.Controls.Add(new Label{Text="ランチャーソース：PiriCraft.csproj のあるフォルダ（初回のみ）",AutoSize=true},0,7);
-        panel.Controls.Add(Row(launcher,Pick("参照",()=>Folder(launcher))),0,8);
-        var bottom=new TableLayoutPanel{Dock=DockStyle.Fill,RowCount=4,ColumnCount=1};
-        bottom.RowStyles.Add(new RowStyle(SizeType.Absolute,60));
-        bottom.RowStyles.Add(new RowStyle(SizeType.Absolute,48));
-        bottom.RowStyles.Add(new RowStyle(SizeType.Absolute,38));
+        var bottom=new TableLayoutPanel{Dock=DockStyle.Fill,RowCount=3,ColumnCount=1};
+        bottom.RowStyles.Add(new RowStyle(SizeType.Absolute,50));
+        bottom.RowStyles.Add(new RowStyle(SizeType.Absolute,45));
         bottom.RowStyles.Add(new RowStyle(SizeType.Percent,100));
-        var checkRow=new TableLayoutPanel{Dock=DockStyle.Fill,RowCount=2,ColumnCount=1};
-        checkRow.RowStyles.Add(new RowStyle(SizeType.Absolute,23));checkRow.RowStyles.Add(new RowStyle(SizeType.Percent,100));
-        checkRow.Controls.Add(new Label{Text="Checkサーバーソース：PiricraftCheckServer（初回のみ）",AutoSize=true},0,0);
-        checkRow.Controls.Add(Row(check,Pick("参照",()=>Folder(check))),0,1);
-        bottom.Controls.Add(checkRow,0,0);bottom.Controls.Add(submit,0,1);
+        bottom.Controls.Add(submit,0,0);
         var row=new FlowLayoutPanel{Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown};
         status.Text="準備中…";row.Controls.Add(status);hash.Text="ファイル未選択";row.Controls.Add(hash);
-        bottom.Controls.Add(row,0,2);bottom.Controls.Add(output,0,3);panel.Controls.Add(bottom,0,10);
+        bottom.Controls.Add(row,0,1);bottom.Controls.Add(output,0,2);panel.Controls.Add(bottom,0,10);
         updating.CheckedChanged+=(_,_)=>mods.Enabled=updating.Checked&&!running;
         adding.CheckedChanged+=(_,_)=>mods.Enabled=updating.Checked&&!running;
         load.Click+=async(_,_)=>await Reload();
@@ -172,41 +165,63 @@ internal sealed class Window : Form {
         if(after.Item1!=0)throw new Exception("GitHub認証が完了していません。");
         Log("GitHub認証完了");State("GitHubログイン済み");
     }catch(Exception e){Log("ERROR "+e);MessageBox.Show(this,e.Message,"認証エラー");}finally{auth.Enabled=true;}}
+    async Task<string> GhRun(string ghExe,params string[] args){
+        var result=await Exec(ghExe,args);
+        if(result.Item1!=0)throw new Exception("GitHub操作エラー: gh "+string.Join(" ",args.Take(3))+"\n"+result.Item2);
+        return result.Item2;
+    }
     async Task Publish() {
-        try{
-            if(!File.Exists(jar.Text))throw new Exception("更新後のJARを選択してください");
-            if(updating.Checked&&(mods.SelectedIndex<0||mods.SelectedIndex>=paths.Count))throw new Exception("更新元を正規一覧から選んでください");
-            if(!File.Exists(Path.Combine(launcher.Text,"PiriCraft.csproj")))throw new Exception("PiriCraft.csprojが見つかりません。");
-            if(!File.Exists(Path.Combine(check.Text,"src","main","java","jp","piricraft","check","PiricraftCheckPlugin.java")))throw new Exception("Checkサーバーのソースが見つかりません。");
-            var exe=await Gh(true);var authState=await Exec(exe,"auth","status");
-            if(authState.Item1!=0)throw new Exception("GitHubで先にログインしてください");
-            string target=updating.Checked?paths[mods.SelectedIndex]:"新規追加";
-            if(MessageBox.Show(this,$"更新元: {target}\n新しいJAR: {jar.Text}\n公開先: {Repo}\n\nビルド・検証後に公開し、自動更新を有効化します。","公開確認",MessageBoxButtons.YesNo)!=DialogResult.Yes)return;
-            Busy(true);State("実行中：Check・EXE生成→起動検証→GitHub公開→自動更新設定");
-            File.WriteAllText(Path.Combine(dir,"settings.json"),JsonSerializer.Serialize(new{launcher=launcher.Text,check=check.Text}));
-            string run=Path.Combine(dir,"runs",DateTime.Now.ToString("yyyyMMdd_HHmmss"));Directory.CreateDirectory(run);
-            var script=Path.Combine(run,"publish.ps1");
-            using(var stream=typeof(Program).Assembly.GetManifestResourceStream("PiriCraftModPublisher.publish.ps1")??throw new Exception("更新エンジン未同梱"))
-            using(var rd=new StreamReader(stream,Encoding.UTF8)){
-                string src=rd.ReadToEnd();
-                // PowerShell 5.1 requires explicit named array arguments for external commands.
-                src=src.Replace("GhJson @(","GhJson -parameters @(");
-                src=Regex.Replace(src,@"\bRun\s+('(?:[^']+)'|[A-Za-z]+)\s+@\(","Run -exe $1 -arguments @(");
-                File.WriteAllText(script,src,new UTF8Encoding(true));
+        if(running)return;
+        try {
+            if(!File.Exists(jar.Text))throw new Exception("新しいMODのJARファイルを選択してください");
+            if(updating.Checked&&(mods.SelectedIndex<0||mods.SelectedIndex>=paths.Count))throw new Exception("更新元を正規MOD一覧から選んでください");
+            var localJar=jar.Text;
+            var filename=Path.GetFileName(localJar);
+            if(filename.Contains('/')||filename.Contains('\\')||!filename.EndsWith(".jar",StringComparison.OrdinalIgnoreCase))throw new Exception("JARのファイル名が不正です");
+            var selected=updating.Checked?paths[mods.SelectedIndex]:"";
+            var action=updating.Checked?"既存MODを更新":"新しいMODを追加";
+            var expectedHash=Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(localJar)));
+            if(MessageBox.Show(this,$"{action}\n更新元：{(updating.Checked?selected:"新規追加")}\n新しいファイル：{filename}\nSHA256：{expectedHash}\n\nGitHubにアップロードし、EXE・Checkをビルドして自動更新を公開します。","確認",MessageBoxButtons.YesNo,MessageBoxIcon.Question)!=DialogResult.Yes)return;
+            Busy(true);
+            var x=await Gh(true);
+            await GhRun(x,"auth","status");
+            // Write permission is held by this collaborator's own GitHub identity, never by shared owner credentials.
+            var who=await GhRun(x,"api","user","--jq",".login");
+            Log("作業者: "+who.Trim()+" / 公開先: "+Repo);
+            var access=await GhRun(x,"api","repos/"+Repo+"/collaborators/"+who.Trim()+"/permission","--jq",".permission");
+            if(!new[]{"admin","maintain","write"}.Contains(access.Trim(),StringComparer.OrdinalIgnoreCase))
+                throw new Exception("このGitHubアカウントにはPiriCraftリポジトリの書込権限がありません");
+            var stage="publisher-input-"+DateTimeOffset.UtcNow.ToUnixTimeSeconds()+"-"+Guid.NewGuid().ToString("N")[..8];
+            State("1/4 新しいJARをGitHubへ転送中...");
+            Log("受け渡し領域を作成: "+stage);
+            await GhRun(x,"release","create",stage,"--repo",Repo,"--draft","--target","main","--title","MOD input "+stage,"--notes","Temporary staging asset. Automatically built by PiriCraft MOD Publisher.");
+            await GhRun(x,"release","upload",stage,localJar,"--repo",Repo);
+            State("2/4 GitHubにビルドを依頼中...");
+            await GhRun(x,"workflow","run","publish-mod-from-app.yml","--repo",Repo,"--ref","main","-f","mode="+(updating.Checked?"update":"add"),"-f","target="+selected,"-f","stage_tag="+stage,"-f","filename="+filename,"-f","sha256="+expectedHash);
+            State("3/4 GitHubでEXE・Checkをビルドし、Windows起動テストを実行中...");
+            Log("クラウドビルド開始。このPCにソース、dotnet、Java、Gradleは不要です。");
+            string? runId=null;
+            for(int t=0;t<300;t++) {
+                await Task.Delay(TimeSpan.FromSeconds(5));
+                var list=await GhRun(x,"run","list","--repo",Repo,"--workflow","publish-mod-from-app.yml","--limit","30","--json","databaseId,displayTitle,status,conclusion");
+                using var doc=JsonDocument.Parse(list);
+                var matched=doc.RootElement.EnumerateArray().FirstOrDefault(e=> (e.GetProperty("displayTitle").GetString()??"").Contains(stage,StringComparison.OrdinalIgnoreCase));
+                if(matched.ValueKind!=JsonValueKind.Object)continue;
+                var id=matched.GetProperty("databaseId").GetInt64().ToString();
+                if(runId!=id){runId=id;Log("ビルドログ: https://github.com/"+Repo+"/actions/runs/"+id);}
+                var statusVal=matched.GetProperty("status").GetString();
+                if(statusVal!="completed")continue;
+                var conclusion=matched.GetProperty("conclusion").GetString();
+                if(conclusion!="success")throw new Exception("GitHubビルド失敗: "+conclusion+"。詳細: https://github.com/"+Repo+"/actions/runs/"+runId);
+                State("4/4 公開成功。ランチャーの自動更新が有効です。");
+                Log("完成: https://github.com/"+Repo+"/actions/runs/"+runId);
+                try{await GhRun(x,"release","delete",stage,"--repo",Repo,"--yes","--cleanup-tag");}catch(Exception e){Log("一時アップロードの自動削除失敗（公開には影響しません）: "+e.Message);}
+                MessageBox.Show(this,"ランチャーとCheckのビルド、公開、自動更新の設定が完了しました。","公開成功");
+                await Reload();return;
             }
-            var psi=new ProcessStartInfo("powershell.exe"){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true,WorkingDirectory=run};
-            foreach(var a in new[]{"-NoLogo","-NoProfile","-ExecutionPolicy","RemoteSigned","-File",script,"-Mode",updating.Checked?"update":"add","-JarPath",jar.Text,"-LauncherRoot",launcher.Text,"-CheckRoot",check.Text,"-Repository",Repo,"-LogPath",Path.Combine(run,"publish.log")})psi.ArgumentList.Add(a);
-            if(updating.Checked){psi.ArgumentList.Add("-TargetPath");psi.ArgumentList.Add(paths[mods.SelectedIndex]);}
-            psi.Environment["PATH"]=Path.GetDirectoryName(exe)+Path.PathSeparator+psi.Environment["PATH"];
-            psi.Environment["GH_PAGER"]="cat";
-            using var p=new Process{StartInfo=psi,EnableRaisingEvents=true};
-            p.OutputDataReceived+=(_,e)=>{if(e.Data!=null)Log(e.Data);};
-            p.ErrorDataReceived+=(_,e)=>{if(e.Data!=null)Log("ERR: "+e.Data);};
-            p.Start();p.BeginOutputReadLine();p.BeginErrorReadLine();await p.WaitForExitAsync();
-            if(p.ExitCode!=0)throw new Exception($"更新エラー（コード {p.ExitCode}）。詳細は {Path.Combine(dir,"publisher.log")}");
-            State("公開成功。自動更新が有効です。");MessageBox.Show(this,"Check・ランチャーの更新と公開が完了しました。","成功");
-            await Reload();
-        }catch(Exception e){State("更新失敗。原因はログを確認してください。");Log("ERROR "+e);MessageBox.Show(this,e.Message,"更新失敗");}
+            throw new Exception("GitHubの処理状況を確認できませんでした。一時領域は残ります。GitHub Actionsで確認してください。");
+        } catch(Exception e){State("更新失敗。公開状況をログで確認してください。");Log("ERROR "+e);MessageBox.Show(this,e.Message,"更新失敗");}
         finally{if(running)Busy(false);}
     }
+
 }

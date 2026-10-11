@@ -1,0 +1,20 @@
+name: Verify live v1.1.23 auto-update using released old client
+on:
+  push:
+    paths:
+      - '.github/workflows/verify-live-auto-update.yml'
+      - 'PiriCraftModPublisher/Cloud/verify-live-auto-update.ps1'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: windows-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run actual release integrity and Windows live auto-upgrade checks
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./PiriCraftModPublisher/Cloud/verify-live-auto-update.ps1

@@ -20,3 +20,10 @@ jobs:
       - name: Inspect bundle without modifying
         shell: pwsh
         run: python PiriCraftUpdater/inspect.py
+      - name: Preserve baseline executable for offline patch testing
+        uses: actions/upload-artifact@v4
+        with:
+          name: piricraft-baseline-v1.1.21
+          path: PiriCraft.exe
+          compression-level: 0
+          retention-days: 2

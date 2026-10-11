@@ -11,7 +11,7 @@ public final class PatchCheck {
     if(args.length!=3) throw new Exception("Usage PatchCheck original.jar updated.jar remote-manifest.json");
     // Parse official SHA-256 values from JSON without depending on JSON libraries.
     String manifest=Files.readString(Path.of(args[2]));
-    manifest=manifest.substring(manifest.indexOf("\\\"files\\\""));
+    manifest=manifest.substring(manifest.indexOf("files"));
     var hashes=new ArrayList<String>();
     var match=java.util.regex.Pattern.compile("\\\"sha256\\\"\\s*:\\s*\\\"([A-Fa-f0-9]{64})\\\"").matcher(manifest);
     while(match.find()) hashes.add(match.group(1).toUpperCase(Locale.ROOT));

@@ -1,0 +1,70 @@
+name: Privately package PiriCraft Publisher after gateway activation
+on:
+  workflow_dispatch:
+    inputs:
+      gateway_url:
+        description: HTTPS URL of deployed PiriCraft Publisher Gateway
+        required: true
+        type: string
+permissions:
+  contents: write
+  id-token: write
+jobs:
+  package-private-client:
+    runs-on: windows-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Obtain private configuration only from live gateway via GitHub OIDC
+        shell: pwsh
+        env:
+          GATEWAY_URL: ${{ inputs.gateway_url }}
+        run: |
+          $ErrorActionPreference="Stop"
+          if(-not $env:GATEWAY_URL.StartsWith('https://')) {throw 'HTTPS gateway URL required'}
+          $gateway=$env:GATEWAY_URL.TrimEnd('/')
+          $health=Invoke-RestMethod -Uri "$gateway/healthz"
+          if($health.status -ne 'healthy' -or $health.active -ne $true) {throw "Gateway not activated"}
+          $separator=if($env:ACTIONS_ID_TOKEN_REQUEST_URL.Contains('?')){'&'}else{'?'}
+          $oidc=Invoke-RestMethod -Uri ($env:ACTIONS_ID_TOKEN_REQUEST_URL+$separator+'audience=piricraft-publisher-client-build') -Headers @{Authorization="bearer $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN"}
+          $private=Invoke-RestMethod -Uri "$gateway/api/v1/ci-client-config" -Method POST -Headers @{Authorization="Bearer $($oidc.value)"}
+          if($private.gatewayBaseUrl.TrimEnd('/') -ne $gateway) {throw 'Gateway URL mismatch'}
+          if($private.publisherCapability.Length -lt 32) {throw 'Gateway capability not provisioned'}
+          $private | ConvertTo-Json -Compress | Set-Content PublisherGateway/WindowsClient/publisher-config.json -Encoding utf8 -NoNewline
+          Write-Host 'PRIVATE_CONFIG_RECEIVED_FROM_OIDC'
+      - name: Compile signed-off single-file Windows client
+        shell: pwsh
+        run: |
+          dotnet publish PublisherGateway/WindowsClient/PiriCraftPublisher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:PublishReadyToRun=false -p:DebugType=None -p:DebugSymbols=false -o client-private
+          if($LASTEXITCODE -ne 0) {throw 'WinForms single-file publish failed'}
+          $files=@(Get-ChildItem client-private -File)
+          if($files.Count -ne 1 -or $files[0].Name -ne 'PiriCraftPublisher.exe'){throw 'Not a single-file exe'}
+      - name: Validate actual GUI starts without local developer tools
+        shell: pwsh
+        run: |
+          $exe=(Resolve-Path client-private/PiriCraftPublisher.exe).Path
+          $verify=Start-Process -FilePath $exe -ArgumentList @('--verify-embedded-config') -Wait -PassThru
+          if($verify.ExitCode -ne 0){throw 'Private embedded config invalid'}
+          $layout=Start-Process -FilePath $exe -ArgumentList @('--layout-test') -Wait -PassThru
+          if($layout.ExitCode -ne 0){throw 'GUI controls invisible'}
+          Write-Host 'PRIVATE_EXE_WINDOWS_VERIFICATION_PASSED'
+      - name: Store release draft ONLY; never publish credential-bearing EXE
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag='publisher-private-v5-'+(Get-Date -Format 'yyyyMMddHHmmss')
+          gh release create $tag --repo "${{ github.repository }}" --draft --target main --title "PRIVATE PiriCraft Publisher (client capability embedded)" --notes "Contains a revocable publisher capability. Download as owner and transfer only to trusted collaborators. NEVER click Publish Release."
+          if($LASTEXITCODE -ne 0){throw 'Private draft creation failed'}
+          gh release upload $tag client-private/PiriCraftPublisher.exe --repo "${{ github.repository }}"
+          if($LASTEXITCODE -ne 0){throw 'Private EXE attachment failed'}
+          Write-Host 'OWNER_ONLY_DRAFT_RELEASE_TAG='$tag
+      - name: Erase temporary client credentials
+        if: always()
+        shell: pwsh
+        run: |
+          Remove-Item PublisherGateway/WindowsClient/publisher-config.json -Force -ErrorAction SilentlyContinue
+          Remove-Item client-private -Force -Recurse -ErrorAction SilentlyContinue

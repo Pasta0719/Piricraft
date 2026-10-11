@@ -7,6 +7,10 @@ permissions:
   contents: read
 jobs:
   windows-self-upgrade:
+    strategy:
+      fail-fast: false
+      matrix:
+        repetition: [1, 2, 3]
     runs-on: windows-latest
     timeout-minutes: 8
     env:

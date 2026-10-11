@@ -1,0 +1,90 @@
+name: Publish PiriCraft v1.1.22 and enable auto-update
+on:
+  push:
+    paths:
+      - '.github/workflows/publish-launcher-1.1.22.yml'
+      - 'PiriCraftUpdater/patch_launcher.py'
+      - 'PiriCraftUpdater/publish_manifest.py'
+      - 'PiriCraftUpdater/mod-parts/**'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: piricraft-v1-1-22-release
+  cancel-in-progress: false
+jobs:
+  publish-and-enable-update:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble the EXACT user-supplied Fabric client MOD
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force staging,dist | Out-Null
+          @'
+          import hashlib, pathlib
+          root=pathlib.Path('PiriCraftUpdater/mod-parts')
+          files=sorted(root.glob('piri-juggler.part*.bin'))
+          assert len(files)==9, f'Expected 9 original MOD parts, got {len(files)}'
+          raw=b''.join(p.read_bytes() for p in files)
+          expect='0FA5B2C12E4E8D59D728F5485ECFC6A002CA6B04750D2E8BC775B3F0DFA2B083'
+          digest=hashlib.sha256(raw).hexdigest().upper()
+          assert digest==expect, f'Client MOD digest mismatch: {digest}'
+          pathlib.Path('staging/piri-juggler-fabric-1.0.0.jar').write_bytes(raw)
+          print('VERIFIED_CLIENT_JAR',len(raw),digest)
+          '@ | python -
+      - name: Download exact published v1.1.21 EXE and approved Check server
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download launcher-v1.1.21 --repo "${{ github.repository }}" --pattern "PiriCraft.exe" --dir staging
+          gh release download check-server-sha-20261011 --repo "${{ github.repository }}" --pattern "PiricraftCheckServer-1.0.0.jar" --dir dist
+      - name: Build v1.1.22 while preserving the current launcher auto-updater
+        shell: pwsh
+        run: |
+          python PiriCraftUpdater/patch_launcher.py --input staging/PiriCraft.exe --client-mod staging/piri-juggler-fabric-1.0.0.jar --output dist/PiriCraft.exe
+      - name: Assert patched EXE identity and bundle
+        shell: pwsh
+        run: |
+          @'
+          import pathlib, hashlib, sys
+          sys.path.insert(0, 'PiriCraftUpdater')
+          import patch_launcher
+          actual=pathlib.Path('dist/PiriCraft.exe').read_bytes()
+          assert len(actual)==101551837, 'Unexpected executable size'
+          assert hashlib.sha256(actual).hexdigest().upper()=='DA496433521BC3D8C3EEDF1F190049D336E0B8D80F95951BD3300CEAFA558A8D', 'Unexpected executable digest'
+          ix,hdr,entries,_,_=patch_launcher.get_bundle(actual)
+          dll=next(x for x in entries if x['path']=='PiriCraft.dll')
+          payload=actual[dll['off']:dll['off']+dll['size']]
+          assert payload.count(patch_launcher.NEW.encode())==1
+          assert payload.count(patch_launcher.OLD.encode())==0
+          assert b'1.1.22' in payload
+          print('BUNDLE_AND_JAR_SHA_VERIFIED',len(actual))
+          '@ | python -
+      - name: Upload compiled launcher for audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: PiriCraft-v1.1.22-exe
+          path: dist/PiriCraft.exe
+          if-no-files-found: error
+          retention-days: 15
+          compression-level: 0
+      - name: Publish BOTH updated components to GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag='launcher-v1.1.22'
+          gh release view $tag --repo "${{ github.repository }}" *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --repo "${{ github.repository }}" --title "PiriCraft Launcher v1.1.22" --notes "Automatic update from v1.1.21. Includes user-provided updated Fabric MOD (SHA256 0FA5B2C1...) and updated PiriCraftCheck server JAR. Existing launcher update behavior retained."
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          gh release upload $tag dist/PiriCraft.exe dist/PiricraftCheckServer-1.0.0.jar --repo "${{ github.repository }}" --clobber
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: ENABLE automatic update AFTER release upload succeeded
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python PiriCraftUpdater/publish_manifest.py dist/PiriCraft.exe

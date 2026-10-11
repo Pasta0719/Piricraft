@@ -1,0 +1,38 @@
+name: Inspect published launcher resources with Mono.Cecil
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/inspect-cecil-resources.yml'
+      - 'PiriCraftModPublisher/ServerBuilder/**'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Download current stable launcher
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download launcher-v1.1.22 --repo "${{ github.repository }}" --pattern "PiriCraft.exe"
+      - name: Extract bundled DLL
+        shell: pwsh
+        run: |
+          @'
+          from pathlib import Path
+          import sys
+          sys.path.insert(0,'PiriCraftUpdater')
+          import patch_launcher
+          exe=Path('PiriCraft.exe').read_bytes()
+          _,_,entries,_,_=patch_launcher.get_bundle(exe)
+          item=next(x for x in entries if x['path']=='PiriCraft.dll')
+          Path('PiriCraft.dll').write_bytes(exe[item['off']:item['off']+item['size']])
+          '@ | python -
+      - name: Inspect embedded launcher data
+        shell: pwsh
+        run: dotnet run --project PiriCraftModPublisher/ServerBuilder/PiriCraftPatch.csproj -- inspect PiriCraft.dll

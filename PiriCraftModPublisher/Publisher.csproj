@@ -5,7 +5,7 @@
 <UseWindowsForms>true</UseWindowsForms>
 <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable>
 <AssemblyName>PiriCraftModPublisher</AssemblyName>
-<Version>4.0.0</Version>
+<Version>4.2.0</Version>
 </PropertyGroup>
 <ItemGroup><Compile Remove="ServerBuilder/**/*.cs" /></ItemGroup>
 </Project>

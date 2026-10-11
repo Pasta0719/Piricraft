@@ -1,0 +1,32 @@
+name: Restore original immutable publisher v4.2 release asset
+on:
+  push:
+    paths:
+      - '.github/workflows/restore-original-publisher-v42.yml'
+permissions:
+  contents: write
+  actions: read
+jobs:
+  restore-original:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore byte-for-byte the original audited 4.2 EXE from historical CI artifact
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          gh run download 38143303840 --repo "${{ github.repository }}" --name PiriCraftModPublisher-Windows-x64 --dir original-v42
+          if($LASTEXITCODE -ne 0){throw 'Original release artifact not available'}
+          $exe=(Resolve-Path original-v42/PiriCraftModPublisher.exe).Path
+          $actual=(Get-FileHash $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          $expected='1e5a72b5c881b4721c3d4f419ca8225b989029233a2a846e5c2e2bbc5e598238'
+          if($actual -ne $expected){throw "Original audited 4.2 digest mismatch: $actual"}
+          gh release upload mod-publisher-v4.2.0 $exe --repo "${{ github.repository }}" --clobber
+          if($LASTEXITCODE -ne 0){throw 'Cannot restore original 4.2 release asset'}
+          $r=gh api "repos/${{ github.repository }}/releases/tags/mod-publisher-v4.2.0" | ConvertFrom-Json
+          $file=@($r.assets|Where-Object{$_.name -eq 'PiriCraftModPublisher.exe'})
+          if($file.Count -ne 1 -or $file[0].digest -ne "sha256:$expected"){throw 'Original v4.2 not restored'}
+          Write-Host "ORIGINAL_V42_RELEASE_SHA256_RESTORED $expected"

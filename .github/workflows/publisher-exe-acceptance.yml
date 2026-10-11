@@ -38,7 +38,7 @@ jobs:
           '@ | python -
           $exe=(Resolve-Path 'publisher-test-dist/PiriCraftModPublisher.exe').Path
           $jar=(Resolve-Path 'publisher-e2e-test.jar').Path
-          $p=Start-Process -FilePath $exe -ArgumentList @('--integration-test',$jar) -Wait -PassThru -WorkingDirectory (Get-Location).Path
+          $p=Start-Process -FilePath $exe -ArgumentList @('--integration-test',$jar,'--integration-test-key') -Wait -PassThru -WorkingDirectory (Get-Location).Path
           if ($p.ExitCode -ne 0) {
             $log=Join-Path $env:LOCALAPPDATA 'PiriCraftModPublisher/publisher.log'
             if (Test-Path $log) { Get-Content $log -Tail 150 }

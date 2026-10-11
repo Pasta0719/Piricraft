@@ -1,0 +1,23 @@
+name: Released original v4.2 EXE full dry-run publishing acceptance
+on:
+  push:
+    paths:
+      - '.github/workflows/verify-released-v42-dry.yml'
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: released-v42-dry
+  cancel-in-progress: false
+jobs:
+  actual-shipped-exe:
+    runs-on: windows-latest
+    timeout-minutes: 18
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_PAGER: cat
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run original released EXE through real upload and GitHub Windows build with dry-run
+        shell: pwsh
+        run: ./Acceptance/verify-released-v42-dry.ps1

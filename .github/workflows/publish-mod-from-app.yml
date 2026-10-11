@@ -24,6 +24,11 @@ on:
         description: Uploaded JAR SHA-256
         required: true
         type: string
+      dry_run:
+        description: Build and test without publishing
+        required: false
+        type: boolean
+        default: false
   push:
     paths:
       - 'PiriCraftModPublisher/ServerBuilder/**'
@@ -45,6 +50,7 @@ jobs:
       INPUT_STAGE_TAG: ${{ inputs.stage_tag }}
       INPUT_FILENAME: ${{ inputs.filename }}
       INPUT_SHA256: ${{ inputs.sha256 }}
+      INPUT_DRY_RUN: ${{ inputs.dry_run }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4

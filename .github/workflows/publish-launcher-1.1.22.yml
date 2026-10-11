@@ -58,7 +58,7 @@ jobs:
           ix,hdr,entries,_,_=patch_launcher.get_bundle(actual)
           dll=next(x for x in entries if x['path']=='PiriCraft.dll')
           payload=actual[dll['off']:dll['off']+dll['size']]
-          assert payload.count(patch_launcher.NEW.encode())==1
+          assert payload.count(patch_launcher.NEW.encode())==2 # CLR resources are intentionally copied into one contiguous section
           assert payload.count(patch_launcher.OLD.encode())==0
           assert b'1.1.22' in payload
           # Independently verify that the new JAR bytes really exist inside

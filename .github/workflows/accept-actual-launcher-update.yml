@@ -1,0 +1,19 @@
+name: PiriCraft v1.1.21 to v1.1.22 full updater acceptance
+on:
+  push:
+    paths:
+      - '.github/workflows/accept-actual-launcher-update.yml'
+      - 'PiriCraftUpdater/accept-actual-upgrade.ps1'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  upgrade-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start real released v1.1.21 and assert v1.1.22 on-disk replacement and no CLR crash
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./PiriCraftUpdater/accept-actual-upgrade.ps1

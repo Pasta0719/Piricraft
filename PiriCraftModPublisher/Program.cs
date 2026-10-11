@@ -43,6 +43,7 @@ internal sealed class Window : Form {
     readonly RadioButton adding=new(){Text="MODを新規追加",AutoSize=true};
     readonly ComboBox mods=new(){DropDownStyle=ComboBoxStyle.DropDownList,Width=520};
     readonly TextBox jar=new(){ReadOnly=true,Width=630};
+    readonly TextBox sharedKey=new(){UseSystemPasswordChar=true,PlaceholderText="所有者から配布されたリポジトリ限定の公開キー（任意）",Dock=DockStyle.Fill};
     readonly TextBox launcher=new(){Width=630};
     readonly TextBox check=new(){Width=630};
     readonly Label status=new(){AutoSize=true,ForeColor=Color.MidnightBlue};
@@ -68,8 +69,8 @@ internal sealed class Window : Form {
             launcher.Text=d.RootElement.GetProperty("launcher").GetString()??launcher.Text;
             check.Text=d.RootElement.GetProperty("check").GetString()??check.Text;
         }catch{}
-        var panel=new TableLayoutPanel{Dock=DockStyle.Fill,Padding=new Padding(23,15,23,15),ColumnCount=1,RowCount=8};
-        foreach(var h in new[]{50,30,57,35,42,35,50,0})panel.RowStyles.Add(new RowStyle(h==0?SizeType.Percent:SizeType.Absolute,h==0?100:h));
+        var panel=new TableLayoutPanel{Dock=DockStyle.Fill,Padding=new Padding(23,15,23,15),ColumnCount=1,RowCount=9};
+        foreach(var h in new[]{50,30,57,35,42,35,50,58,0})panel.RowStyles.Add(new RowStyle(h==0?SizeType.Percent:SizeType.Absolute,h==0?100:h));
         Controls.Add(panel);
         panel.Controls.Add(new Label{Text="PiriCraft MOD Publisher",Font=new Font("Yu Gothic UI",19,FontStyle.Bold),AutoSize=true},0,0);
         title.Text="GitHubの正規MOD一覧を読み込みます";panel.Controls.Add(title,0,1);
@@ -86,7 +87,14 @@ internal sealed class Window : Form {
         bottom.Controls.Add(submit,0,0);
         var row=new FlowLayoutPanel{Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown};
         status.Text="準備中…";row.Controls.Add(status);hash.Text="ファイル未選択";row.Controls.Add(hash);
-        bottom.Controls.Add(row,0,1);bottom.Controls.Add(output,0,2);panel.Controls.Add(bottom,0,7);
+        bottom.Controls.Add(row,0,1);bottom.Controls.Add(output,0,2);
+        var keyRow=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=1,RowCount=2};
+        keyRow.RowStyles.Add(new RowStyle(SizeType.Absolute,24));
+        keyRow.RowStyles.Add(new RowStyle(SizeType.Percent,100));
+        keyRow.Controls.Add(new Label{Text="共有公開キー（共同開発者のGitHub招待は不要／キーは保存しません）",AutoSize=true},0,0);
+        keyRow.Controls.Add(sharedKey,0,1);
+        panel.Controls.Add(keyRow,0,7);
+        panel.Controls.Add(bottom,0,8);
         updating.CheckedChanged+=(_,_)=>mods.Enabled=updating.Checked&&!running;
         adding.CheckedChanged+=(_,_)=>mods.Enabled=updating.Checked&&!running;
         load.Click+=async(_,_)=>await Reload();

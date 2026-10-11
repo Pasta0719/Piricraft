@@ -1,4 +1,5 @@
 name: Publish MOD change from standalone publisher
+run-name: MOD ${{ inputs.filename }} / ${{ inputs.stage_tag }}
 on:
   workflow_dispatch:
     inputs:

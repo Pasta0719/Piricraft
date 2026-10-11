@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 import hashlib
 import hmac
 import io
+import jwt
 import json
 import logging
 import os
@@ -249,3 +250,40 @@ async def status(ticket: str, authorization: str | None = Header(None)):
                       "workflow_url": run.get("html_url")}
             return result
     return {"ticket": ticket, "status": "queued", "conclusion": None, "workflow_url": None}
+
+
+@app.post("/api/v1/ci-client-config")
+async def ci_client_config(authorization: str | None = Header(None)):
+    """Issue a short-lived response only to the intended GitHub Actions workflow.
+
+    The credential is injected into the private EXE at build time. Nothing secret
+    is committed to GitHub or stored in an Actions artifact.
+    """
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(401, "GitHub Actions OIDC bearer token required")
+    jwt_text = authorization[7:]
+    try:
+        signing_key = jwt.PyJWKClient(
+            "https://token.actions.githubusercontent.com/.well-known/jwks", cache_jwk_set=True
+        ).get_signing_key_from_jwt(jwt_text)
+        claims = jwt.decode(jwt_text, signing_key.key,
+                            algorithms=["RS256"],
+                            issuer="https://token.actions.githubusercontent.com",
+                            audience="piricraft-publisher-client-build",
+                            options={"require": ["iss", "aud", "exp", "sub", "iat"]})
+    except (jwt.InvalidTokenError, jwt.PyJWKClientError, ValueError):
+        raise HTTPException(403, "Invalid GitHub Actions OIDC identity")
+    if (
+        claims.get("repository") != REPO
+        or claims.get("ref") != "refs/heads/main"
+        or claims.get("event_name") != "workflow_dispatch"
+        or claims.get("workflow_ref") != (
+            "Pasta0719/Piricraft/.github/workflows/build-secure-publisher.yml@refs/heads/main"
+        )
+    ):
+        raise HTTPException(403, "Not an authorized publishing workflow")
+    public_url = get_secret("PIRICRAFT_PUBLIC_URL")
+    if not public_url.startswith("https://"):
+        raise HTTPException(503, "Gateway public URL is not configured")
+    return {"gatewayBaseUrl": public_url.rstrip("/"),
+            "publisherCapability": get_secret("PIRICRAFT_GATEWAY_CAPABILITY")}

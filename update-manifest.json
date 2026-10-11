@@ -2,9 +2,9 @@
   "manifestVersion": 1,
   "deleteUnknownMods": true,
   "launcher": {
-    "version": "1.1.23",
-    "url": "https://github.com/Pasta0719/Piricraft/releases/download/launcher-v1.1.23/PiriCraft.exe",
-    "sha256": "0D66B2BBD60BAFBD7731627B98A0336224FEA7D1C4C56C275784AA238EFABF4D",
+    "version": "1.1.24",
+    "url": "https://github.com/Pasta0719/Piricraft/releases/download/launcher-v1.1.24/PiriCraft.exe",
+    "sha256": "9C07984E3BCBEF43FEEE0F5608D4A4F0B3FBA7CFBC2E11A31B5F7958CB473997",
     "size": 97574629
   },
   "files": [

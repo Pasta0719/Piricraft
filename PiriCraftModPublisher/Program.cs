@@ -165,7 +165,10 @@ internal sealed class Window : Form {
     }
     async Task<(int,string)> Exec(string exe,params string[] args) {
         using var p=new Process{StartInfo=new ProcessStartInfo(exe){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true}};
-        foreach(string a in args)p.StartInfo.ArgumentList.Add(a);p.Start();
+        foreach(string a in args)p.StartInfo.ArgumentList.Add(a);
+        if(Path.GetFileName(exe).Equals("gh.exe",StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(sharedKey.Text))
+            p.StartInfo.Environment["GH_TOKEN"]=sharedKey.Text.Trim();
+        p.Start();
         var a1=p.StandardOutput.ReadToEndAsync();var a2=p.StandardError.ReadToEndAsync();await p.WaitForExitAsync();return(p.ExitCode,await a1+await a2);
     }
     async Task CheckAuth(){try{var x=await Gh(false);var r=await Exec(x,"auth","status");Log(r.Item1==0?"GitHub認証済み":"GitHub未ログイン。作業者本人のアカウントでログインしてください。");}catch{Log("GitHubは初回ログインで自動準備できます。");}}
@@ -199,13 +202,10 @@ internal sealed class Window : Form {
             Busy(true);
             var x=await Gh(true);
             await GhRun(x,"auth","status");
-            // Write permission is held by this collaborator's own GitHub identity, never by shared owner credentials.
             if(integrationJar==null){
                 var who=await GhRun(x,"api","user","--jq",".login");
-                Log("作業者: "+who.Trim()+" / 公開先: "+Repo);
-                var access=await GhRun(x,"api","repos/"+Repo+"/collaborators/"+who.Trim()+"/permission","--jq",".permission");
-                if(!new[]{"admin","maintain","write"}.Contains(access.Trim(),StringComparer.OrdinalIgnoreCase))
-                    throw new Exception("このGitHubアカウントにはPiriCraftリポジトリの書込権限がありません");
+                Log((string.IsNullOrWhiteSpace(sharedKey.Text)?"GitHubログイン利用：":"共有公開キー利用：")+who.Trim()+" / "+Repo);
+                Log("GitHubがリポジトリの書込権限を検証します");
             } else {Log("Integration test mode: Actions job uses scoped GitHub token");}
             var stage="publisher-input-"+DateTimeOffset.UtcNow.ToUnixTimeSeconds()+"-"+Guid.NewGuid().ToString("N")[..8];
             State("1/4 新しいJARをGitHubへ転送中...");

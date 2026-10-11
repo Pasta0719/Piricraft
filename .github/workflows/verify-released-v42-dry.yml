@@ -13,6 +13,7 @@ jobs:
   actual-shipped-exe:
     runs-on: windows-latest
     timeout-minutes: 18
+    # Verify the immutable original v4.2 binary after restoring its exact Release bytes.
     env:
       GH_TOKEN: ${{ github.token }}
       GH_PAGER: cat

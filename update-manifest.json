@@ -2,10 +2,10 @@
   "manifestVersion": 1,
   "deleteUnknownMods": true,
   "launcher": {
-    "version": "1.1.24",
-    "url": "https://github.com/Pasta0719/Piricraft/releases/download/launcher-v1.1.24/PiriCraft.exe",
-    "sha256": "9C07984E3BCBEF43FEEE0F5608D4A4F0B3FBA7CFBC2E11A31B5F7958CB473997",
-    "size": 97574629
+    "version": "1.1.25",
+    "url": "https://github.com/Pasta0719/Piricraft/releases/download/launcher-v1.1.25/PiriCraft.exe",
+    "sha256": "77C52D5DDB9C4901AD67EFB3B1A9FD89B11C40A2F9524D2A23B2D738B0C43E09",
+    "size": 97651429
   },
   "files": [
     {
@@ -104,6 +104,12 @@
       "sha256": "0410D7205FAE31007450DB70C3FF00A598CB0C38B330D2E5DF516353037DF54A",
       "source": "embedded",
       "resource": "PiriCraft.Mods.piricraft-check.jar"
+    },
+    {
+      "path": "mods/PiriWatch-Fabric-0.2.0-alpha.1.jar",
+      "sha256": "42FA099DDFC9B76885C5F4360896774E19C6D499D9A8D9E576C3BF5EB2B42376",
+      "source": "embedded",
+      "resource": "PiriCraft.Mods.upload_42fa099ddfc9b768.jar"
     }
   ]
 }

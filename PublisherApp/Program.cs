@@ -362,8 +362,9 @@ internal sealed class PublisherWindow : Form
             {
                 if (stream is null) throw new InvalidOperationException("内蔵の更新エンジンが見つかりません。");
                 Directory.CreateDirectory(Program.Storage);
-                using var targetFile = new FileStream(engineFile, FileMode.Create, FileAccess.Write);
-                await stream.CopyToAsync(targetFile);
+                using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
+                var script = await reader.ReadToEndAsync();
+                File.WriteAllText(engineFile, script, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
             }
             string mode = update.Checked ? "update" : "add";
             string jar = filePath.Text, launcher = launcherRoot.Text, checker = checkRoot.Text;
@@ -394,6 +395,7 @@ internal sealed class PublisherWindow : Form
             status.Text = "完了：新しいMODを公開しました";
             MessageBox.Show(this, "更新処理が完了しました。\nEXE・Check JARと自動更新マニフェストを公開しました。",
                 "完了", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            busy = false;
             await RefreshListAsync();
         }
         catch (Exception e)

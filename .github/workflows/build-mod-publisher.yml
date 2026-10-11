@@ -23,7 +23,7 @@ jobs:
         run: |
           $tokens = $null
           $errors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'PiriCraftModPublisher/publish.ps1').Path,[ref]$tokens,[ref]$errors) | Out-Null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'PublisherApp/publish.ps1').Path,[ref]$tokens,[ref]$errors) | Out-Null
           if ($errors.Count -gt 0) {
             $errors | ForEach-Object { Write-Error $_.ToString() }
             throw "Publisher engine parse failed"

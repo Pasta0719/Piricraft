@@ -31,14 +31,14 @@ jobs:
         shell: pwsh
         run: |
           $exe = (Resolve-Path PublisherGateway/WindowsClient/bin/Debug/net10.0-windows/win-x64/PiriCraftPublisher.exe).Path
-          & $exe --verify-embedded-config
-          if($LASTEXITCODE -ne 0) {
+          $configTest=Start-Process -FilePath $exe -ArgumentList @("--verify-embedded-config") -Wait -PassThru
+          if($configTest.ExitCode -ne 0) {
             $crash=Join-Path $env:LOCALAPPDATA "PiriCraftPublisher/crash.log"
             if(Test-Path $crash){ Get-Content $crash -Tail 90 }
             throw "Embedded config failed"
           }
-          & $exe --layout-test
-          if($LASTEXITCODE -ne 0) {
+          $layoutTest=Start-Process -FilePath $exe -ArgumentList @("--layout-test") -Wait -PassThru
+          if($layoutTest.ExitCode -ne 0) {
             $crash=Join-Path $env:LOCALAPPDATA "PiriCraftPublisher/crash.log"
             if(Test-Path $crash){ Get-Content $crash -Tail 90 }
             throw "Publisher GUI layout failed"

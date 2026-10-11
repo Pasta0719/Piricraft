@@ -105,7 +105,8 @@ $final.launcher.url="https://github.com/$repo/releases/download/$tag/PiriCraft.e
 $final.launcher.sha256=(Get-FileHash dist/PiriCraft.exe -Algorithm SHA256).Hash
 $final.launcher.size=[int64](Get-Item dist/PiriCraft.exe).Length
 $payload=$final | ConvertTo-Json -Depth 60
-$encoded=[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($payload+"\n"))
+$null=$payload | ConvertFrom-Json -Depth 60
+$encoded=[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($payload+"`n"))
 $body=@{message="PiriCraft MOD Publisher: update to v$new";content=$encoded;sha=[string]$release.sha} | ConvertTo-Json -Compress
 $body | gh api "repos/$repo/contents/update-manifest.json" -X PUT --input -
 if($LASTEXITCODE -ne 0){throw 'Failed to activate automatic update'}

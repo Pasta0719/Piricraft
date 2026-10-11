@@ -284,7 +284,7 @@ try {
         if (@($allTags | Where-Object { $_.tagName -eq $tag }).Count -gt 0) { Fail ("GitHubに$tagが既にあります。上書きしません") }
         Say 'GitHubドラフトリリースを作成'
         [void](Run 'gh' @('release','create',$tag,'--repo',$Repository,'--draft','--title',("PiriCraft Launcher v$version"),
-            '--notes',"Automated MOD $Mode: $filename (SHA256 $incomingHash); updates PiriCraftCheck Server."))
+            '--notes',"Automated MOD ${Mode}: $filename (SHA256 $incomingHash); updates PiriCraftCheck Server."))
         [void](Run 'gh' @('release','upload',$tag,$exe,$checkOutput,'--repo',$Repository))
         $assets=GhJson @('release','view',$tag,'--repo',$Repository,'--json','assets')
         $exeAsset=@($assets.assets | Where-Object {$_.name -eq 'PiriCraft.exe'})

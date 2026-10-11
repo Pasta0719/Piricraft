@@ -1,0 +1,38 @@
+name: Publisher Gateway Windows client compile and UI check (no release)
+on:
+  push:
+    paths:
+      - 'PublisherGateway/WindowsClient/**'
+      - '.github/workflows/test-gateway-windows-client.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-validation-only:
+    runs-on: windows-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Create NONPRODUCTION acceptance config
+        shell: pwsh
+        run: |
+          @'
+          {"gatewayBaseUrl":"https://publisher-tests.example","publisherCapability":"not-a-real-key-for-gateway-source-checks-123456789abcdef"}
+          '@ | Set-Content -LiteralPath PublisherGateway/WindowsClient/publisher-config.json -Encoding utf8
+      - name: Compile client from source
+        shell: pwsh
+        run: |
+          dotnet build PublisherGateway/WindowsClient/PiriCraftPublisher.csproj -c Debug -r win-x64 --self-contained false
+          if($LASTEXITCODE -ne 0) { throw "Gateway Windows GUI compile failed" }
+      - name: Verify config and real UI dimensions
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path PublisherGateway/WindowsClient/bin/Debug/net10.0-windows/win-x64/PiriCraftPublisher.exe).Path
+          & $exe --verify-embedded-config
+          if($LASTEXITCODE -ne 0) { throw "Embedded config failed" }
+          & $exe --layout-test
+          if($LASTEXITCODE -ne 0) { throw "Publisher GUI layout failed" }
+          Write-Host "CLIENT_SOURCE_AND_GUI_OK_NO_RELEASE"

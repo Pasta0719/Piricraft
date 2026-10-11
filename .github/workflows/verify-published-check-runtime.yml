@@ -1,0 +1,52 @@
+name: Verify released Check plugin bytecode and real Paper startup
+on:
+  push:
+    paths:
+      - 'Acceptance/verify-published-check.py'
+      - 'Acceptance/paper-plugin-runtime.py'
+      - '.github/workflows/verify-published-check-runtime.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  released-plugin-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Download exactly the production-approved Check plugin and manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p paper-ci/plugins
+          gh api "repos/${{ github.repository }}/contents/update-manifest.json" --jq .content | base64 -d > paper-ci/manifest.json
+          python -m json.tool paper-ci/manifest.json > /dev/null
+          version=$(python -c 'import json;print(json.load(open("paper-ci/manifest.json"))["launcher"]["version"])')
+          echo "CURRENT_RELEASE=$version"
+          gh release download "launcher-v$version" --repo "${{ github.repository }}" --pattern PiricraftCheckServer-1.0.0.jar --dir paper-ci/plugins
+          test -s paper-ci/plugins/PiricraftCheckServer-1.0.0.jar
+      - name: Assert bytecode allowlist exactly matches all official client MOD hashes
+        run: python Acceptance/verify-published-check.py paper-ci/plugins/PiricraftCheckServer-1.0.0.jar paper-ci/manifest.json
+      - name: Download Paper 1.21.1 for isolated plugin runtime acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 --connect-timeout 15 --max-time 120 -o paper-ci/paper-1.21.1.jar \
+            https://api.papermc.io/v2/projects/paper/versions/1.21.1/builds/133/downloads/paper-1.21.1-133.jar
+          test "$(stat -c %s paper-ci/paper-1.21.1.jar)" -gt 10000000
+      - name: Actually boot Paper and enable published server plugin
+        run: python Acceptance/paper-plugin-runtime.py paper-ci
+      - name: Preserve test Paper log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-paper-check-plugin-boot-log
+          path: paper-ci/test-console.txt
+          if-no-files-found: ignore
+          retention-days: 4

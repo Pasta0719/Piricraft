@@ -8,7 +8,7 @@ class Program {
   static int Main(string[] args) {
     try {
       if(args.Length<2) throw new Exception("Expected inspect <dll> or patch <dll> <output> <plan.json> <mod.jar>");
-      var assembly=AssemblyDefinition.ReadAssembly(args[1],new ReaderParameters{ReadingMode=ReadingMode.Immediate});
+      var assembly=AssemblyDefinition.ReadAssembly(args[1],new ReaderParameters{ReadingMode=ReadingMode.Deferred});
       var res=assembly.MainModule.Resources.OfType<EmbeddedResource>().ToArray();
       Console.WriteLine("ASSEMBLY_VERSION "+assembly.Name.Version);
       foreach(var r in res) Console.WriteLine($"RESOURCE {r.Name} {r.GetResourceData().Length}");

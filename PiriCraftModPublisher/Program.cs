@@ -25,13 +25,26 @@ internal static class Program {
             var i=Array.IndexOf(args,"--integration-test");
             var testJar=i>=0 && i+1<args.Length?args[i+1]:null;
             if(i>=0 && testJar==null)throw new ArgumentException("Integration test JAR missing");
-            bool tokenTest=args.Contains("--integration-test-key");
+            // Real production acceptance is opt-in and protected by a CI-only gate.
+            // It follows the exact same Publish() event handler and GH CLI paths as the GUI.
+            var productionIndex=Array.IndexOf(args,"--production-acceptance");
+            string? acceptanceTarget=null;
+            if(productionIndex>=0) {
+                if(Environment.GetEnvironmentVariable("GITHUB_ACTIONS")!="true" ||
+                   Environment.GetEnvironmentVariable("PIRICRAFT_REAL_PUBLISH_ACCEPTANCE")!="true")
+                    throw new InvalidOperationException("Production acceptance is allowed only in dedicated CI");
+                if(productionIndex+2>=args.Length)throw new ArgumentException("Acceptance JAR and target MOD required");
+                if(testJar!=null)throw new ArgumentException("Cannot combine dry and production acceptance");
+                testJar=args[productionIndex+1];
+                acceptanceTarget=args[productionIndex+2];
+            }
+            bool tokenTest=args.Contains("--integration-test-key") || productionIndex>=0;
             string? testKey=tokenTest?Environment.GetEnvironmentVariable("GH_TOKEN"):null;
             if(tokenTest){
                 if(string.IsNullOrWhiteSpace(testKey))throw new InvalidOperationException("Missing test GH_TOKEN");
                 Environment.SetEnvironmentVariable("GH_TOKEN",null,EnvironmentVariableTarget.Process);
             }
-            Application.Run(new Window(testJar,testKey)); return Environment.ExitCode;
+            Application.Run(new Window(testJar,testKey,acceptanceTarget)); return Environment.ExitCode;
         }
         catch(Exception e) {
             var dir=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"PiriCraftModPublisher");
@@ -62,11 +75,13 @@ internal sealed class Window : Form {
     readonly System.Collections.Generic.List<string> paths=new();
     string? gh;bool running;
     readonly string? integrationJar;
+    readonly string? acceptanceTarget;
 
-    public Window(string? integrationJar=null,string? integrationKey=null) {
+    public Window(string? integrationJar=null,string? integrationKey=null,string? acceptanceTarget=null) {
         this.integrationJar=integrationJar;
+        this.acceptanceTarget=acceptanceTarget;
         if(!string.IsNullOrEmpty(integrationKey))sharedKey.Text=integrationKey;
-        Text="PiriCraft MOD Publisher v4.2";Font=new Font("Yu Gothic UI",10);
+        Text="PiriCraft MOD Publisher v4.3";Font=new Font("Yu Gothic UI",10);
         ClientSize=new Size(925,730);MinimumSize=new Size(805,660);
         StartPosition=FormStartPosition.CenterScreen;BackColor=Color.FromArgb(247,249,253);
         Directory.CreateDirectory(dir);
@@ -107,7 +122,22 @@ internal sealed class Window : Form {
         load.Click+=async(_,_)=>await Reload();
         auth.Click+=async(_,_)=>await Login();
         submit.Click+=async(_,_)=>await Publish();
-        Shown+=async(_,_)=>{await Reload();await CheckAuth();if(this.integrationJar!=null){adding.Checked=true;jar.Text=this.integrationJar;await Publish();}};
+        Shown+=async(_,_)=>{
+            await Reload();await CheckAuth();
+            if(this.integrationJar!=null) {
+                if(acceptanceTarget!=null) {
+                    // Use official list as the source of truth: never publish to an arbitrary target.
+                    var index=paths.FindIndex(p=>p==acceptanceTarget);
+                    if(index<0){Log("ERROR production acceptance target missing");Environment.ExitCode=1;Close();return;}
+                    updating.Checked=true;
+                    mods.SelectedIndex=index;
+                } else {
+                    adding.Checked=true;
+                }
+                jar.Text=this.integrationJar;
+                await Publish();
+            }
+        };
         FormClosing+=(_,e)=>{if(running && integrationJar==null){e.Cancel=true;MessageBox.Show(this,"公開処理中はウィンドウを閉じられません。","PiriCraft");}};
     }
     static Control Row(TextBox box,Button button) {
@@ -220,7 +250,7 @@ internal sealed class Window : Form {
             await GhRun(x,"release","create",stage,"--repo",Repo,"--draft","--target","main","--title","MOD input "+stage,"--notes","Temporary staging asset. Automatically built by PiriCraft MOD Publisher.");
             await GhRun(x,"release","upload",stage,localJar,"--repo",Repo);
             State("2/4 GitHubにビルドを依頼中...");
-            await GhRun(x,"workflow","run","publish-mod-from-app.yml","--repo",Repo,"--ref","main","-f","mode="+(updating.Checked?"update":"add"),"-f","target="+selected,"-f","stage_tag="+stage,"-f","filename="+filename,"-f","sha256="+expectedHash,"-f","dry_run="+(integrationJar!=null?"true":"false"));
+            await GhRun(x,"workflow","run","publish-mod-from-app.yml","--repo",Repo,"--ref","main","-f","mode="+(updating.Checked?"update":"add"),"-f","target="+selected,"-f","stage_tag="+stage,"-f","filename="+filename,"-f","sha256="+expectedHash,"-f","dry_run="+(integrationJar!=null && acceptanceTarget==null?"true":"false"));
             State("3/4 GitHubでEXE・Checkをビルドし、Windows起動テストを実行中...");
             Log("クラウドビルド開始。このPCにソース、dotnet、Java、Gradleは不要です。");
             string? runId=null;
@@ -236,10 +266,10 @@ internal sealed class Window : Form {
                 if(statusVal!="completed")continue;
                 var conclusion=matched.GetProperty("conclusion").GetString();
                 if(conclusion!="success")throw new Exception("GitHubビルド失敗: "+conclusion+"。詳細: https://github.com/"+Repo+"/actions/runs/"+runId);
-                State(integrationJar!=null?"4/4 テスト成功（本番公開は変更なし）":"4/4 公開成功。ランチャーの自動更新が有効です。");
+                State(integrationJar!=null && acceptanceTarget==null?"4/4 テスト成功（本番公開は変更なし）":"4/4 公開成功。ランチャーの自動更新が有効です。");
                 Log("完成: https://github.com/"+Repo+"/actions/runs/"+runId);
                 try{await GhRun(x,"release","delete",stage,"--repo",Repo,"--yes","--cleanup-tag");}catch(Exception e){Log("一時アップロードの自動削除失敗（公開には影響しません）: "+e.Message);}
-                if(integrationJar!=null){Log("APP_TO_GITHUB_ACTIONS_END_TO_END_PASSED");Environment.ExitCode=0;Close();return;}
+                if(integrationJar!=null){Log(acceptanceTarget==null?"APP_TO_GITHUB_ACTIONS_END_TO_END_PASSED":"APP_TO_REAL_PRODUCTION_AUTOUPDATE_PASSED");Environment.ExitCode=0;Close();return;}
                 MessageBox.Show(this,"ランチャーとCheckのビルド、公開、自動更新の設定が完了しました。","公開成功");
                 await Reload();return;
             }

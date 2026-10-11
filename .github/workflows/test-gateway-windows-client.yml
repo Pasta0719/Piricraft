@@ -32,7 +32,15 @@ jobs:
         run: |
           $exe = (Resolve-Path PublisherGateway/WindowsClient/bin/Debug/net10.0-windows/win-x64/PiriCraftPublisher.exe).Path
           & $exe --verify-embedded-config
-          if($LASTEXITCODE -ne 0) { throw "Embedded config failed" }
+          if($LASTEXITCODE -ne 0) {
+            $crash=Join-Path $env:LOCALAPPDATA "PiriCraftPublisher/crash.log"
+            if(Test-Path $crash){ Get-Content $crash -Tail 90 }
+            throw "Embedded config failed"
+          }
           & $exe --layout-test
-          if($LASTEXITCODE -ne 0) { throw "Publisher GUI layout failed" }
+          if($LASTEXITCODE -ne 0) {
+            $crash=Join-Path $env:LOCALAPPDATA "PiriCraftPublisher/crash.log"
+            if(Test-Path $crash){ Get-Content $crash -Tail 90 }
+            throw "Publisher GUI layout failed"
+          }
           Write-Host "CLIENT_SOURCE_AND_GUI_OK_NO_RELEASE"

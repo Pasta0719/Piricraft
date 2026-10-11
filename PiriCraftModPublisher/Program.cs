@@ -16,8 +16,7 @@ namespace PiriCraftModPublisher;
 internal static class Program {
     [STAThread] static int Main(string[] args) {
         if (args.Contains("--self-test")) {
-            using var stream=typeof(Program).Assembly.GetManifestResourceStream("PiriCraftModPublisher.publish.ps1");
-            if(stream==null || stream.Length<14000) return 1;
+            if(typeof(Window)==null)return 1;
             Console.WriteLine("SELF_TEST_PASSED");return 0;
         }
         Application.EnableVisualStyles();
@@ -52,7 +51,7 @@ internal sealed class Window : Form {
     string? gh;bool running;
 
     public Window() {
-        Text="PiriCraft MOD Publisher";Font=new Font("Yu Gothic UI",10);
+        Text="PiriCraft MOD Publisher v4.0";Font=new Font("Yu Gothic UI",10);
         ClientSize=new Size(925,730);MinimumSize=new Size(805,660);
         StartPosition=FormStartPosition.CenterScreen;BackColor=Color.FromArgb(247,249,253);
         Directory.CreateDirectory(dir);

@@ -1,0 +1,37 @@
+name: Released v4.3 EXE real MOD publish and old-client self-update
+on:
+  push:
+    paths:
+      - '.github/workflows/verify-released-v43-production.yml'
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: piricraft-real-v43-production
+  cancel-in-progress: false
+jobs:
+  actual-released-binary:
+    runs-on: windows-latest
+    timeout-minutes: 27
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_PAGER: cat
+      PIRICRAFT_REAL_PUBLISH_ACCEPTANCE: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Run actual released EXE and verify generated release, Check jar, and Windows auto-upgrade
+        shell: pwsh
+        run: ./Acceptance/verify-released-v43-production.ps1
+      - name: Preserve app logs if it fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v43-real-production-acceptance-logs
+          path: |
+            production-v43-check/
+            ${{ runner.temp }}/PiriCraftModPublisher/
+          if-no-files-found: ignore
+          retention-days: 4

@@ -1,13 +1,14 @@
 param()
 $ErrorActionPreference='Stop'
 $repo=$env:GITHUB_REPOSITORY
-$dry=$env:GITHUB_EVENT_NAME -ne 'workflow_dispatch'
+$fixture=$env:GITHUB_EVENT_NAME -ne 'workflow_dispatch'
+$dry=$fixture -or ($env:INPUT_DRY_RUN -eq 'true')
 New-Item -ItemType Directory -Force work,dist | Out-Null
 $mode=$env:INPUT_MODE
 $target=$env:INPUT_TARGET
 $stage=$env:INPUT_STAGE_TAG
 $filename=$env:INPUT_FILENAME
-if($dry){
+if($fixture){
   $mode='add';$target=''
   $filename='test-publisher-cloud.jar'
   @'
@@ -74,8 +75,8 @@ Write-Host 'CLOUD_BUILD_AND_WINDOWS_STARTUP_PASS'
 if($dry){Write-Host 'DRY_RUN_COMPLETE: no release or automatic update changes';exit 0}
 $confirmed=gh api "repos/$repo/contents/update-manifest.json" | ConvertFrom-Json
 if($confirmed.sha -ne $release.sha){throw 'Official MOD list changed during build; refusing to publish stale update'}
-$existing=gh release view $tag --repo $repo --json tagName 2>$null
-if($LASTEXITCODE -eq 0){throw "Release $tag exists; refusing replacement"}
+$allReleases=gh release list --repo $repo --limit 100 --json tagName | ConvertFrom-Json
+if(@($allReleases | Where-Object { $_.tagName -eq $tag }).Count -gt 0){throw "Release $tag exists; refusing replacement"}
 gh release create $tag --repo $repo --title "PiriCraft launcher v$new" --notes "Uploaded using PiriCraft MOD Publisher. Validated by Windows startup test."
 if($LASTEXITCODE -ne 0){throw 'Cannot create launcher release'}
 gh release upload $tag dist/PiriCraft.exe dist/PiricraftCheckServer-1.0.0.jar $jar --repo $repo

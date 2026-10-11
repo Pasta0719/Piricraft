@@ -52,7 +52,7 @@ jobs:
           sys.path.insert(0, 'PiriCraftUpdater')
           import patch_launcher
           actual=pathlib.Path('dist/PiriCraft.exe').read_bytes()
-          assert len(actual)==101551837, 'Unexpected executable size'
+          assert len(actual)==119774941, 'Unexpected executable size after contiguous CLR resource repair'
           import struct
           digest=hashlib.sha256(actual).hexdigest().upper()
           ix,hdr,entries,_,_=patch_launcher.get_bundle(actual)
@@ -72,16 +72,47 @@ jobs:
               off=sectab+40*k
               name=payload[off:off+8].rstrip(b'\\x00')
               vsize,rva,rsize,raw=struct.unpack_from('<IIII',payload,off+8)
-              if name==b'.pirijar': blocks.append((raw,vsize))
+              if name==b'.pirijar': blocks.append((rva,raw,vsize))
           assert len(blocks)==1,'Embedded JAR section missing or duplicated'
-          raw,vsize=blocks[0]
+          rva,raw,vsize=blocks[0]
+          # CLI resource RVA/Size must be contained in ONE contiguous PE section.
+          # The previous non-contiguous layout caused BadImageFormatException 0x8007000B.
+          cli_rva=struct.unpack_from('<I',payload,pe+24+112+14*8)[0]
+          sec_map=[]
+          for k in range(nsec):
+              off=sectab+40*k
+              vs,rv,rs,rf=struct.unpack_from('<IIII',payload,off+8)
+              sec_map.append((rv,vs,rs,rf))
+          cli_off=next(rf+(cli_rva-rv) for rv,vs,rs,rf in sec_map if rv<=cli_rva<rv+rs)
+          resource_rva,resource_size=struct.unpack_from('<II',payload,cli_off+24)
+          assert (resource_rva,resource_size)==(rva,vsize),'Invalid CLR resource bounds'
           expected=pathlib.Path('staging/piri-juggler-fabric-1.0.0.jar').read_bytes()
-          assert struct.unpack_from('<I',payload,raw)[0]==len(expected)
-          embedded=payload[raw+4:raw+4+len(expected)]
+          jarstart=raw+vsize-len(expected)-4
+          assert struct.unpack_from('<I',payload,jarstart)[0]==len(expected)
+          embedded=payload[jarstart+4:jarstart+4+len(expected)]
           assert embedded==expected,'EXE carries a different Fabric JAR'
           assert hashlib.sha256(embedded).hexdigest().upper()==patch_launcher.NEW
           print('BUNDLE_AND_JAR_SHA_VERIFIED',len(actual),digest,len(embedded))
           '@ | python -
+      - name: CRITICAL actual Windows startup smoke test before publication
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $exe=(Resolve-Path "dist/PiriCraft.exe").Path
+          $since=Get-Date
+          $p=Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe) -PassThru
+          Start-Sleep -Seconds 10
+          $p.Refresh()
+          if ($p.HasExited) {
+            Write-Host "EXE_EXIT_CODE=$($p.ExitCode)"
+            if ($p.ExitCode -ne 0) { throw "Updated launcher crashed on Windows with exit code $($p.ExitCode)" }
+          } else {
+            Write-Host "EXE_ALIVE_AFTER_10_SECONDS"
+            Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+          }
+          $crashes=Get-WinEvent -FilterHashtable @{LogName='Application';StartTime=$since;Id=1026} -ErrorAction SilentlyContinue | Where-Object { $_.ProviderName -eq '.NET Runtime' -and $_.Message -match 'PiriCraft' }
+          if ($crashes) { $crashes | ForEach-Object {Write-Host $_.Message}; throw "Bad CLR image / runtime crash; DO NOT PUBLISH" }
+          Write-Host 'WINDOWS_RUNTIME_SMOKE_PASSED'
       - name: Upload compiled launcher for audit
         uses: actions/upload-artifact@v4
         with:

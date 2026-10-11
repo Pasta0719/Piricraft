@@ -1,0 +1,59 @@
+name: Publisher EXE end-to-end acceptance
+on:
+  push:
+    paths:
+      - 'PiriCraftModPublisher/Program.cs'
+      - '.github/workflows/publisher-exe-acceptance.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: piricraft-publisher-exe-acceptance
+  cancel-in-progress: false
+jobs:
+  actual-gui-flow:
+    runs-on: windows-latest
+    timeout-minutes: 18
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_PAGER: cat
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Compile exactly one standalone EXE
+        shell: pwsh
+        run: |
+          dotnet publish PiriCraftModPublisher/Publisher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishReadyToRun=false -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false -o publisher-test-dist
+          if ($LASTEXITCODE -ne 0) { throw 'Publisher GUI build failed' }
+      - name: Run actual EXE through upload and full cloud build without live publishing
+        shell: pwsh
+        run: |
+          @'
+          import sys, zipfile
+          with zipfile.ZipFile('publisher-e2e-test.jar','w') as z:
+            z.writestr('fabric.mod.json','{"schemaVersion":1,"id":"publisher_e2e_test","version":"1.0","name":"Publisher E2E CI","environment":"client"}')
+          '@ | python -
+          $exe=(Resolve-Path 'publisher-test-dist/PiriCraftModPublisher.exe').Path
+          $jar=(Resolve-Path 'publisher-e2e-test.jar').Path
+          $p=Start-Process -FilePath $exe -ArgumentList @('--integration-test',$jar) -Wait -PassThru -WorkingDirectory (Get-Location).Path
+          if ($p.ExitCode -ne 0) {
+            $log=Join-Path $env:LOCALAPPDATA 'PiriCraftModPublisher/publisher.log'
+            if (Test-Path $log) { Get-Content $log -Tail 150 }
+            throw "Publisher GUI e2e failure exit=$($p.ExitCode)"
+          }
+          $log=Join-Path $env:LOCALAPPDATA 'PiriCraftModPublisher/publisher.log'
+          $content=Get-Content $log -Raw
+          if (!$content.Contains('APP_TO_GITHUB_ACTIONS_END_TO_END_PASSED')) {throw 'Missing end-to-end completion evidence'}
+          Write-Host "PUBLISHER_EXE_ACTUAL_UPLOAD_TO_BUILD_PASSED"
+      - name: Save debug log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: publisher-exe-acceptance-log
+          path: |
+            ${{ runner.temp }}/PiriCraftModPublisher
+            publisher-test-dist
+          if-no-files-found: ignore

@@ -93,7 +93,7 @@ internal sealed class Window : Form {
         auth.Click+=async(_,_)=>await Login();
         submit.Click+=async(_,_)=>await Publish();
         Shown+=async(_,_)=>{await Reload();await CheckAuth();if(this.integrationJar!=null){adding.Checked=true;jar.Text=this.integrationJar;await Publish();}};
-        FormClosing+=(_,e)=>{if(running){e.Cancel=true;MessageBox.Show(this,"公開処理中はウィンドウを閉じられません。","PiriCraft");}};
+        FormClosing+=(_,e)=>{if(running && integrationJar==null){e.Cancel=true;MessageBox.Show(this,"公開処理中はウィンドウを閉じられません。","PiriCraft");}};
     }
     static Control Row(TextBox box,Button button) {
         var row=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=2};

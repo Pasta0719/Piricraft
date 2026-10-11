@@ -2,7 +2,7 @@ name: Build standalone PiriCraft MOD Publisher
 on:
   push:
     paths:
-      - 'PublisherApp/**'
+      - 'PiriCraftModPublisher/**'
       - '.github/workflows/build-mod-publisher.yml'
   workflow_dispatch:
 permissions:
@@ -23,7 +23,7 @@ jobs:
         run: |
           $tokens = $null
           $errors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'PublisherApp/publish.ps1').Path,[ref]$tokens,[ref]$errors) | Out-Null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'PiriCraftModPublisher/publish.ps1').Path,[ref]$tokens,[ref]$errors) | Out-Null
           if ($errors.Count -gt 0) {
             $errors | ForEach-Object { Write-Error $_.ToString() }
             throw "Publisher engine parse failed"
@@ -32,7 +32,7 @@ jobs:
       - name: Build actual standalone EXE
         shell: pwsh
         run: |
-          dotnet publish PublisherApp/PiriCraftModPublisher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishReadyToRun=false -p:PublishTrimmed=false -o publisher-dist
+          dotnet publish PiriCraftModPublisher/Publisher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishReadyToRun=false -p:PublishTrimmed=false -o publisher-dist
           if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
           Get-ChildItem publisher-dist | Select-Object Name,Length | Format-Table
           $files=Get-ChildItem publisher-dist -File
@@ -68,10 +68,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag='mod-publisher-v2.0.0'
+          $tag='mod-publisher-v3.0.0'
           gh release view $tag --repo "${{ github.repository }}" *> $null
           if ($LASTEXITCODE -ne 0) {
-            gh release create $tag --repo "${{ github.repository }}" --title "PiriCraft MOD Publisher 2.0.0 (standalone)" --notes "Single-file Windows GUI. Select registered MOD or add new JAR, then build and publish using the existing local launcher and PiriCraftCheck sources. Needs GitHub CLI, .NET SDK and Gradle/JDK for production publishing; users authenticate with their own GitHub account. No owner credentials embedded."
+            gh release create $tag --repo "${{ github.repository }}" --title "PiriCraft MOD Publisher 3.0.0 (standalone)" --notes "Single-file Windows GUI. Select registered MOD or add new JAR, then build and publish using the existing local launcher and PiriCraftCheck sources. Needs GitHub CLI, .NET SDK and Gradle/JDK for production publishing; users authenticate with their own GitHub account. No owner credentials embedded."
             if ($LASTEXITCODE -ne 0) { throw 'Release creation failed' }
           }
           gh release upload $tag publisher-dist/PiriCraftModPublisher.exe --repo "${{ github.repository }}" --clobber

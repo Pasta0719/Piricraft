@@ -67,7 +67,8 @@ async def main():
         if ticket:
             async with GitHub() as gh:
                 try:
-                    release=await gh.call("GET","/repos/Pasta0719/Piricraft/releases/tags/"+ticket)
+                    release=await gh.find_staging(ticket)
+                    if release is None: raise RuntimeError("Draft staging release not found by listing")
                     await gh.delete_staging(release["id"],ticket)
                     print("STAGING_RELEASE_CLEANED",flush=True)
                 except Exception as exc:

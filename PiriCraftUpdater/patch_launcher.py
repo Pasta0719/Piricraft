@@ -141,9 +141,9 @@ def patch_managed_dll(dll_bytes,newjar):
     struct.pack_into('<I',dll,opt+56,align(new_rva+vsize,sectal))
     struct.pack_into('<I',dll,opt+8,struct.unpack_from('<I',dll,opt+8)[0]+rawsz)
     struct.pack_into('<I',dll,opt+64,0)
-    dll.extend(b'\\x00'*(new_raw-len(dll)))
+    dll.extend(b'\x00'*(new_raw-len(dll)))
     dll.extend(payload)
-    dll.extend(b'\\x00'*(rawsz-len(payload)))
+    dll.extend(b'\x00'*(rawsz-len(payload)))
     assert dll[new_raw+new_rel:new_raw+new_rel+4]==struct.pack('<I',len(newjar))
     assert hash_(dll[new_raw+new_rel+4:new_raw+new_rel+4+len(newjar)])==NEW
     return bytes(dll)

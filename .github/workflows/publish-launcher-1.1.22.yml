@@ -53,14 +53,34 @@ jobs:
           import patch_launcher
           actual=pathlib.Path('dist/PiriCraft.exe').read_bytes()
           assert len(actual)==101551837, 'Unexpected executable size'
-          assert hashlib.sha256(actual).hexdigest().upper()=='DA496433521BC3D8C3EEDF1F190049D336E0B8D80F95951BD3300CEAFA558A8D', 'Unexpected executable digest'
+          import struct
+          digest=hashlib.sha256(actual).hexdigest().upper()
           ix,hdr,entries,_,_=patch_launcher.get_bundle(actual)
           dll=next(x for x in entries if x['path']=='PiriCraft.dll')
           payload=actual[dll['off']:dll['off']+dll['size']]
           assert payload.count(patch_launcher.NEW.encode())==1
           assert payload.count(patch_launcher.OLD.encode())==0
           assert b'1.1.22' in payload
-          print('BUNDLE_AND_JAR_SHA_VERIFIED',len(actual))
+          # Independently verify that the new JAR bytes really exist inside
+          # the managed PE resource section rather than checking only its SHA string.
+          pe=struct.unpack_from('<I',payload,0x3c)[0]
+          nsec=struct.unpack_from('<H',payload,pe+6)[0]
+          optsz=struct.unpack_from('<H',payload,pe+20)[0]
+          sectab=pe+24+optsz
+          blocks=[]
+          for k in range(nsec):
+              off=sectab+40*k
+              name=payload[off:off+8].rstrip(b'\\x00')
+              vsize,rva,rsize,raw=struct.unpack_from('<IIII',payload,off+8)
+              if name==b'.pirijar': blocks.append((raw,vsize))
+          assert len(blocks)==1,'Embedded JAR section missing or duplicated'
+          raw,vsize=blocks[0]
+          expected=pathlib.Path('staging/piri-juggler-fabric-1.0.0.jar').read_bytes()
+          assert struct.unpack_from('<I',payload,raw)[0]==len(expected)
+          embedded=payload[raw+4:raw+4+len(expected)]
+          assert embedded==expected,'EXE carries a different Fabric JAR'
+          assert hashlib.sha256(embedded).hexdigest().upper()==patch_launcher.NEW
+          print('BUNDLE_AND_JAR_SHA_VERIFIED',len(actual),digest,len(embedded))
           '@ | python -
       - name: Upload compiled launcher for audit
         uses: actions/upload-artifact@v4

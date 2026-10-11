@@ -119,29 +119,33 @@ def patch_managed_dll(dll_bytes,newjar):
         if i<0:break
         locations.append(i);cursor=i+1
     assert len(locations)==1,f'Expected unique ManifestResource.Offset, found {locations}'
-    # Add exactly one read-only PE section and move only the replaced resource there.
-    # All other managed resources retain their original locations and offsets.
+    # CLR ManifestResource.Offset is relative to the resource directory RVA.
+    # Every CLI resource MUST live in one contiguous PE section; the previous
+    # v1.1.22 binary violated this and crashed with BadImageFormatException.
+    # Copy the full unchanged original resource directory, then append the
+    # new user JAR and relocate the CLI Resources RVA to a new PE section.
+    old_resources=bytes(dll[resraw:resraw+ressize])
     last=max(sections,key=lambda x:x[2])
     new_rva=align(last[2]+max(last[1],last[3]),sectal)
     new_raw=align(len(dll),fileal)
-    new_rel=new_rva-resrva
-    payload=struct.pack('<I',len(newjar))+newjar
+    new_rel=len(old_resources)
+    payload=old_resources+struct.pack('<I',len(newjar))+newjar
     rawsz=align(len(payload),fileal)
     vsize=len(payload)
-    assert 0<new_rel<2**32 and new_rel+len(payload)<2**32
+    assert new_rel+len(newjar)+4<2**32
     struct.pack_into('<I',dll,locations[0],new_rel)
-    struct.pack_into('<II',dll,cli+24,resrva,new_rel+len(payload))
+    struct.pack_into('<II',dll,cli+24,new_rva,vsize)
     new_section=sectab+nsec*40
     struct.pack_into('<8sIIIIIIHHI',dll,new_section,b'.pirijar',vsize,new_rva,rawsz,new_raw,0,0,0,0,0x40000040)
     struct.pack_into('<H',dll,peoff+6,nsec+1)
     struct.pack_into('<I',dll,opt+56,align(new_rva+vsize,sectal))
     struct.pack_into('<I',dll,opt+8,struct.unpack_from('<I',dll,opt+8)[0]+rawsz)
-    struct.pack_into('<I',dll,opt+64,0)  # PE checksum is recalculated by Windows only if signing
-    dll.extend(b'\x00'*(new_raw-len(dll)))
+    struct.pack_into('<I',dll,opt+64,0)
+    dll.extend(b'\\x00'*(new_raw-len(dll)))
     dll.extend(payload)
-    dll.extend(b'\x00'*(rawsz-len(payload)))
-    assert dll[new_raw:new_raw+4]==struct.pack('<I',len(newjar))
-    assert hash_(dll[new_raw+4:new_raw+4+len(newjar)])==NEW
+    dll.extend(b'\\x00'*(rawsz-len(payload)))
+    assert dll[new_raw+new_rel:new_raw+new_rel+4]==struct.pack('<I',len(newjar))
+    assert hash_(dll[new_raw+new_rel+4:new_raw+new_rel+4+len(newjar)])==NEW
     return bytes(dll)
 
 

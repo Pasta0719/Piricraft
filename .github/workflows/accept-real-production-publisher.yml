@@ -1,0 +1,27 @@
+name: Real production MOD publisher + launcher auto-update acceptance
+on:
+  push:
+    paths:
+      - '.github/workflows/accept-real-production-publisher.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: piricraft-real-production-acceptance
+  cancel-in-progress: false
+jobs:
+  publish-and-verify:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Publish byte-identical existing MOD in production and verify real auto-update
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_PAGER: cat
+        run: ./PiriCraftModPublisher/Cloud/accept-real-production.ps1

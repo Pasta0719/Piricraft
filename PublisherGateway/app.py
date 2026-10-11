@@ -155,7 +155,9 @@ class GitHub:
         return await self.call("POST", f"/repos/{REPO}/actions/workflows/publish-mod-from-app.yml/dispatches",
             json_data={"ref": "main", "inputs": {
                 "mode": mode, "target": target, "stage_tag": tag,
-                "filename": filename, "sha256": sha, "dry_run": "false",
+                "filename": filename, "sha256": sha,
+                "dry_run": ("true" if os.environ.get("GITHUB_ACTIONS") == "true"
+                            and os.environ.get("PIRICRAFT_TEST_DRY_RUN") == "true" else "false"),
             }})
 
     async def jobs(self):

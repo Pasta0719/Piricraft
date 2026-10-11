@@ -150,3 +150,24 @@ async def test_no_server_secret_refuses_use(client, monkeypatch):
     monkeypatch.delenv("PIRICRAFT_GATEWAY_CAPABILITY")
     async with client as c:
         assert (await c.get("/api/v1/mods",headers=auth())).status_code==503
+
+
+@pytest.mark.asyncio
+async def test_ci_config_requires_github_oidc(client):
+    async with client as c:
+        response=await c.post("/api/v1/ci-client-config")
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_ci_config_rejects_random_token(client, monkeypatch):
+    class FakeJwks:
+        def __init__(self, *args, **kwargs):
+            pass
+        def get_signing_key_from_jwt(self, token):
+            raise gateway.jwt.PyJWKClientError("No matching signing key")
+    monkeypatch.setattr(gateway.jwt,"PyJWKClient",FakeJwks)
+    async with client as c:
+        response=await c.post("/api/v1/ci-client-config",
+            headers={"Authorization": "Bearer definitely-not-github-oidc"})
+    assert response.status_code == 403

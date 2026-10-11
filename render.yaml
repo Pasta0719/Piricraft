@@ -2,7 +2,7 @@ services:
   - type: web
     name: piricraft-publisher-gateway
     runtime: python
-    plan: starter
+    plan: free
     rootDir: PublisherGateway
     branch: main
     buildCommand: pip install -r requirements.txt

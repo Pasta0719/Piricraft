@@ -1,0 +1,39 @@
+name: Build and publish PiriCraftCheck server
+on:
+  push:
+    paths:
+      - 'PiricraftCheckServer/**'
+      - '.github/workflows/build-piricraft-check.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  server-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Fetch EXACT v1.1.21 Check server binary
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/piricraft-check-original
+          gh release download launcher-v1.1.21 --repo "${{ github.repository }}" --pattern "PiricraftCheckServer-1.0.0.jar" --dir /tmp/piricraft-check-original
+      - name: Replace ONLY approved PiriJuggler client SHA-256
+        run: |
+          python3 PiricraftCheckServer/build.py --source /tmp/piricraft-check-original/PiricraftCheckServer-1.0.0.jar
+      - name: Upload independently installable Check server JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: piricraft-check-server-fabric-20261011
+          path: PiricraftCheckServer/dist/PiricraftCheckServer-1.0.0.jar
+          if-no-files-found: error
+      - name: Publish Check plugin on GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="check-server-sha-20261011"
+          if ! gh release view "$tag" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release create "$tag" --repo "${{ github.repository }}" --title "PiriCraftCheck server - Fabric SHA update" --notes "Based on the v1.1.21 Check server plugin. Only the approved PiriJuggler Fabric SHA-256 is updated; original plugin behavior preserved."
+          fi
+          gh release upload "$tag" PiricraftCheckServer/dist/PiricraftCheckServer-1.0.0.jar --repo "${{ github.repository }}" --clobber

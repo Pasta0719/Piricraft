@@ -1,0 +1,25 @@
+name: Publisher Gateway backend tests
+on:
+  push:
+    paths:
+      - 'PublisherGateway/**'
+      - '.github/workflows/test-publisher-gateway.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  unit-and-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install gateway and test dependencies
+        run: pip install -r PublisherGateway/requirements-dev.txt
+      - name: Run all gateway tests
+        working-directory: PublisherGateway
+        run: python -m pytest -q
+      - name: Check Python compilation
+        run: python -m compileall -q PublisherGateway

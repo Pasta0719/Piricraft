@@ -1,0 +1,32 @@
+name: Publisher Gateway real GitHub integration (no live publish)
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'PublisherGateway/ci_live_staging.py'
+      - '.github/workflows/test-publisher-gateway-live.yml'
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: piricraft-publisher-gateway-live
+  cancel-in-progress: false
+jobs:
+  real-staging:
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    env:
+      GITHUB_ACTIONS: "true"
+      PIRICRAFT_TEST_DRY_RUN: "true"
+      PIRICRAFT_GITHUB_TOKEN: ${{ github.token }}
+      PIRICRAFT_GATEWAY_CAPABILITY: ci-gateway-local-credential-only-0123456789abcdef
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install backend
+        run: pip install -r PublisherGateway/requirements.txt
+      - name: Stage real JAR via gateway API, dispatch remote workflow, verify Windows CI, and clean draft
+        working-directory: PublisherGateway
+        run: python ci_live_staging.py

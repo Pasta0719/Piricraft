@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>PiriCraftPublisher</AssemblyName>
+    <Version>5.0.0</Version>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="publisher-config.json" LogicalName="PiriCraftPublisher.ClientConfig.json"/>
+  </ItemGroup>
+  <Target Name="FailWhenUnconfigured" BeforeTargets="PrepareForBuild">
+    <Error Condition="!Exists('publisher-config.json')" Text="Missing private gateway client configuration. Do not ship this build." />
+  </Target>
+</Project>

@@ -31,8 +31,8 @@ MAX_JAR_BYTES = 64 * 1024 * 1024
 MAX_ZIP_UNCOMPRESSED = 256 * 1024 * 1024
 MAX_ZIP_ENTRIES = 5000
 STAGE_PATTERN = re.compile(r"^publisher-input-[a-f0-9]{24}$")
-PATH_PATTERN = re.compile(r"^mods/[^/\\\\]+\\.jar$", flags=re.I)
-FILENAME_PATTERN = re.compile(r"^[^/\\\\]+\\.jar$", flags=re.I)
+PATH_PATTERN = re.compile(r"^mods/[^/]+[.]jar$", flags=re.I)
+FILENAME_PATTERN = re.compile(r"^[^/]+[.]jar$", flags=re.I)
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("piricraft.publisher.gateway")
 app = FastAPI(title="PiriCraft Publisher Gateway", docs_url=None, redoc_url=None)
@@ -62,7 +62,7 @@ def check_upload_rate():
         _recent_uploads.append(now)
 
 def verify_jar(data: bytes, filename: str):
-    if not FILENAME_PATTERN.fullmatch(filename) or filename.startswith(".") or len(filename) > 160:
+    if not FILENAME_PATTERN.fullmatch(filename) or chr(92) in filename or filename.startswith(".") or len(filename) > 160:
         raise HTTPException(400, "Invalid JAR filename")
     try:
         with zipfile.ZipFile(io.BytesIO(data), "r") as jar:
@@ -72,7 +72,7 @@ def verify_jar(data: bytes, filename: str):
             if sum(entry.file_size for entry in entries) > MAX_ZIP_UNCOMPRESSED:
                 raise HTTPException(400, "Excessive ZIP expansion")
             for entry in entries:
-                entry_name = entry.filename.replace("\\\\", "/")
+                entry_name = entry.filename.replace(chr(92), "/")
                 if entry_name.startswith("/") or any(part == ".." for part in entry_name.split("/")):
                     raise HTTPException(400, "Unsafe ZIP path")
             if jar.testzip() is not None:
@@ -143,7 +143,6 @@ class GitHub:
         })
 
     async def upload_asset(self, release: dict, filename: str, content: bytes):
-        upload_url = release["upload_url"].split("{", 1)[0] + "?name=" + httpx.QueryParams({"name": filename}).get("name", "")
         # Filename is validated to a plain basename; use the QueryParams serializer.
         upload_url = release["upload_url"].split("{", 1)[0] + "?" + str(httpx.QueryParams({"name": filename}))
         return await self.call("POST", upload_url, content=content, extra_headers={
@@ -194,9 +193,9 @@ async def publish(request: Request,
     require_capability(authorization)
     if x_mod_mode not in {"add", "update"}:
         raise HTTPException(400, "Unknown MOD publish mode")
-    if x_mod_mode == "update" and not PATH_PATTERN.fullmatch(x_mod_target):
+    if x_mod_mode == "update" and (not PATH_PATTERN.fullmatch(x_mod_target) or chr(92) in x_mod_target):
         raise HTTPException(400, "Invalid original MOD selection")
-    if not FILENAME_PATTERN.fullmatch(x_mod_filename):
+    if not FILENAME_PATTERN.fullmatch(x_mod_filename) or chr(92) in x_mod_filename:
         raise HTTPException(400, "Invalid filename")
     if not re.fullmatch("[A-Fa-f0-9]{64}", x_mod_sha256):
         raise HTTPException(400, "Invalid expected checksum")

@@ -1,0 +1,22 @@
+name: Inspect released PiriCraft EXE bundle
+on:
+  push:
+    paths:
+      - 'PiriCraftUpdater/**'
+      - '.github/workflows/inspect-released-launcher.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch current published PiriCraft.exe
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download launcher-v1.1.21 --repo "${{ github.repository }}" --pattern "PiriCraft.exe" --dir .
+      - name: Inspect bundle without modifying
+        shell: pwsh
+        run: python PiriCraftUpdater/inspect.py

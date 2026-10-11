@@ -1,0 +1,21 @@
+name: Test staged JAR and cloud publisher without release
+on:
+  push:
+    paths:
+      - 'PiriCraftModPublisher/Cloud/verify-upload.ps1'
+      - '.github/workflows/test-publisher-upload.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: write
+jobs:
+  publish-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify staging upload, workflow dispatch, build and Windows smoke end-to-end
+        shell: pwsh
+        run: ./PiriCraftModPublisher/Cloud/verify-upload.ps1

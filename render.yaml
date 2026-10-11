@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: piricraft-publisher-gateway
+    runtime: python
+    plan: starter
+    rootDir: PublisherGateway
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.9
+      - key: PIRICRAFT_GATEWAY_CAPABILITY
+        generateValue: true
+      - key: PIRICRAFT_GITHUB_TOKEN
+        sync: false
+      - key: PIRICRAFT_PUBLIC_URL
+        sync: false

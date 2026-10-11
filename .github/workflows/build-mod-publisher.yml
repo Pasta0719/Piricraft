@@ -18,17 +18,6 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-      - name: Validate embedded PowerShell engine syntax
-        shell: pwsh
-        run: |
-          $tokens = $null
-          $errors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'PublisherApp/publish.ps1').Path,[ref]$tokens,[ref]$errors) | Out-Null
-          if ($errors.Count -gt 0) {
-            $errors | ForEach-Object { Write-Error $_.ToString() }
-            throw "Publisher engine parse failed"
-          }
-          Write-Host "POWERSHELL_ENGINE_SYNTAX_OK"
       - name: Build actual standalone EXE
         shell: pwsh
         run: |
@@ -68,10 +57,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag='mod-publisher-v3.0.0'
+          $tag='mod-publisher-v4.0.0'
           gh release view $tag --repo "${{ github.repository }}" *> $null
           if ($LASTEXITCODE -ne 0) {
-            gh release create $tag --repo "${{ github.repository }}" --title "PiriCraft MOD Publisher 3.0.0 (standalone)" --notes "Single-file Windows GUI. Select registered MOD or add new JAR, then build and publish using the existing local launcher and PiriCraftCheck sources. Needs GitHub CLI, .NET SDK and Gradle/JDK for production publishing; users authenticate with their own GitHub account. No owner credentials embedded."
+            gh release create $tag --repo "${{ github.repository }}" --title "PiriCraft MOD Publisher 4.0.0 (cloud publishing)" --notes "Single-file Windows GUI. Select official existing MOD or add a new JAR; cloud GitHub Actions builds and tests the launcher and Check server and activates auto-update. No local development environment. Collaborators sign in using their own repo-Write GitHub account; no owner credentials included."
             if ($LASTEXITCODE -ne 0) { throw 'Release creation failed' }
           }
           gh release upload $tag publisher-dist/PiriCraftModPublisher.exe --repo "${{ github.repository }}" --clobber

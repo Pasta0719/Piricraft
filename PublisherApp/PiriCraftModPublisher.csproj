@@ -12,6 +12,8 @@
     <SelfContained>true</SelfContained>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <PublishTrimmed>false</PublishTrimmed>
+    <DebugSymbols>false</DebugSymbols>
+    <DebugType>none</DebugType>
   </PropertyGroup>
   <ItemGroup>
     <EmbeddedResource Include="publish.ps1" LogicalName="PiriCraftModPublisher.publish.ps1" />

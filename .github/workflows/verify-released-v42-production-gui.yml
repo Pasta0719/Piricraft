@@ -1,0 +1,34 @@
+name: Verify actual released v4.2 GUI real production update
+on:
+  push:
+    paths:
+      - '.github/workflows/verify-released-v42-production-gui.yml'
+      - 'PiriCraftModPublisher/Cloud/verify-released-v42-production-gui.ps1'
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: piricraft-v42-production-exe-acceptance
+  cancel-in-progress: false
+jobs:
+  actual-binary-ui:
+    runs-on: windows-latest
+    timeout-minutes: 23
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_PAGER: cat
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify ACTUAL published EXE binary via real Windows UI and no-op production update
+        shell: pwsh
+        run: ./PiriCraftModPublisher/Cloud/verify-released-v42-production-gui.ps1
+      - name: Save UI log if check fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: released-v42-real-gui-debug
+          path: |
+            actual-v42-e2e/
+            ${{ runner.temp }}/PiriCraftModPublisher/
+          if-no-files-found: ignore
+          retention-days: 3

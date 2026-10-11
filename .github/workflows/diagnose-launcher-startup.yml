@@ -1,0 +1,25 @@
+name: Diagnose v1.1.22 startup failure
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/diagnose-launcher-startup.yml'
+      - 'PiriCraftUpdater/diagnose-startup.ps1'
+permissions:
+  contents: read
+jobs:
+  startup-diagnostics:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Launch v1.1.21 and v1.1.22 and capture Windows crash evidence
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./PiriCraftUpdater/diagnose-startup.ps1
+      - name: Attach diagnostic logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: launcher-startup-diagnostics
+          path: diag

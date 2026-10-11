@@ -25,7 +25,13 @@ internal static class Program {
             var i=Array.IndexOf(args,"--integration-test");
             var testJar=i>=0 && i+1<args.Length?args[i+1]:null;
             if(i>=0 && testJar==null)throw new ArgumentException("Integration test JAR missing");
-            Application.Run(new Window(testJar)); return Environment.ExitCode;
+            bool tokenTest=args.Contains("--integration-test-key");
+            string? testKey=tokenTest?Environment.GetEnvironmentVariable("GH_TOKEN"):null;
+            if(tokenTest){
+                if(string.IsNullOrWhiteSpace(testKey))throw new InvalidOperationException("Missing test GH_TOKEN");
+                Environment.SetEnvironmentVariable("GH_TOKEN",null,EnvironmentVariableTarget.Process);
+            }
+            Application.Run(new Window(testJar,testKey)); return Environment.ExitCode;
         }
         catch(Exception e) {
             var dir=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"PiriCraftModPublisher");
@@ -57,8 +63,9 @@ internal sealed class Window : Form {
     string? gh;bool running;
     readonly string? integrationJar;
 
-    public Window(string? integrationJar=null) {
+    public Window(string? integrationJar=null,string? integrationKey=null) {
         this.integrationJar=integrationJar;
+        if(!string.IsNullOrEmpty(integrationKey))sharedKey.Text=integrationKey;
         Text="PiriCraft MOD Publisher v4.1";Font=new Font("Yu Gothic UI",10);
         ClientSize=new Size(925,730);MinimumSize=new Size(805,660);
         StartPosition=FormStartPosition.CenterScreen;BackColor=Color.FromArgb(247,249,253);

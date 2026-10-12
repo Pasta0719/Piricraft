@@ -2,10 +2,10 @@
   "manifestVersion": 1,
   "deleteUnknownMods": true,
   "launcher": {
-    "version": "1.1.26",
-    "url": "https://github.com/Pasta0719/Piricraft/releases/download/launcher-v1.1.26/PiriCraft.exe",
-    "sha256": "B62A5B4367F0A7FC3478AA80326A89580E9E36A9FF29458FC92D320A5138A934",
-    "size": 97651941
+    "version": "1.1.27",
+    "url": "https://github.com/Pasta0719/Piricraft/releases/download/launcher-v1.1.27/PiriCraft.exe",
+    "sha256": "E41EB3880D080452D5B702F8FD76B5702CB994012732ACD5F26AA366074335CA",
+    "size": 97652453
   },
   "files": [
     {
@@ -107,9 +107,15 @@
     },
     {
       "path": "mods/PiriWatch-Fabric.jar",
-      "sha256": "82934098832C3F82C2BF83BCD09001AF6F416325834815B334E4E27B6BE986AF",
+      "sha256": "26FE9AE7D5405A557667ABC7861A9B0232B6A9487276C68AF144047963CE34A1",
       "source": "embedded",
-      "resource": "PiriCraft.Mods.upload_82934098832c3f82.jar"
+      "resource": "PiriCraft.Mods.upload_26fe9ae7d5405a55.jar"
     }
-  ]
+  ],
+  "checkServer": {
+    "size": 21653,
+    "version": "1.1.27",
+    "sha256": "0B58E01D52184714BC0871873E2F1D55124098831F86EA74A71267C26512EFF8",
+    "url": "https://github.com/Pasta0719/Piricraft/releases/download/launcher-v1.1.27/PiricraftCheckServer-1.0.0.jar"
+  }
 }

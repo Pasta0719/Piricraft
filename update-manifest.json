@@ -2,9 +2,9 @@
   "manifestVersion": 1,
   "deleteUnknownMods": true,
   "launcher": {
-    "version": "1.1.28",
-    "url": "https://github.com/Pasta0719/Piricraft/releases/download/launcher-v1.1.28/PiriCraft.exe",
-    "sha256": "8C071C4A0FE750F688C985378E7891DAFE361C306781F4FD0BCB6C4AD8EE1B3C",
+    "version": "1.1.29",
+    "url": "https://github.com/Pasta0719/Piricraft/releases/download/launcher-v1.1.29/PiriCraft.exe",
+    "sha256": "7AEC30B28FD8E0B5D395E75E9C82BA9644E9BA0B53CE9500C908D5A58D1EAD62",
     "size": 97652453
   },
   "files": [
@@ -113,9 +113,9 @@
     }
   ],
   "checkServer": {
-    "version": "1.1.28",
-    "sha256": "F03B4DD76499BE72664E62DAC19A5330D667F6B82928D6EEE5B6BD9FE684575A",
-    "size": 21716,
-    "url": "https://github.com/Pasta0719/Piricraft/releases/download/launcher-v1.1.28/PiricraftCheckServer-1.0.0.jar"
+    "url": "https://github.com/Pasta0719/Piricraft/releases/download/launcher-v1.1.29/PiricraftCheckServer-1.0.0.jar",
+    "sha256": "9FAE0F61812ED923EEA81E43B368405C7D6611402D85A54717F60B2DF7B7538C",
+    "version": "1.1.29",
+    "size": 21653
   }
 }

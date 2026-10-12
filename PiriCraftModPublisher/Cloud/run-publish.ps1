@@ -58,10 +58,12 @@ if($LASTEXITCODE -ne 0){throw 'Cecil resource patch failed'}
 python PiriCraftModPublisher/ServerBuilder/repack.py --base work/PiriCraft.exe --dll work/PiriCraft.updated.dll --out dist/PiriCraft.exe --old $old --new $new
 if($LASTEXITCODE -ne 0){throw 'EXE bundle repack failed'}
 $env:JAVA_TOOL_OPTIONS='--add-exports=java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED'
-javac --add-exports=java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED -d work PiriCraftModPublisher/ServerBuilder/PatchCheck.java
+javac --add-exports=java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED -d work PiriCraftModPublisher/ServerBuilder/PatchCheck.java PiriCraftModPublisher/ServerBuilder/TestPatchCheck.java
 if($LASTEXITCODE -ne 0){throw 'Check server Java tool compilation failed'}
 java --add-exports=java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED -cp work PatchCheck work/PiricraftCheckServer-1.0.0.jar dist/PiricraftCheckServer-1.0.0.jar work/updated-manifest.json
 if($LASTEXITCODE -ne 0){throw 'Check server SHA rewrite failed'}
+java --add-exports=java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED -cp work TestPatchCheck dist/PiricraftCheckServer-1.0.0.jar work/updated-manifest.json
+if($LASTEXITCODE -ne 0){throw 'Check server initialization and manifest validation failed'}
 $begin=Get-Date
 $p=Start-Process -FilePath (Resolve-Path 'dist/PiriCraft.exe').Path -PassThru
 Start-Sleep -Seconds 10

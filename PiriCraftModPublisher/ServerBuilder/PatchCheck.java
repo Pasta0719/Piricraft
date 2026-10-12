@@ -38,20 +38,34 @@ public final class PatchCheck {
   static byte[] rewrite(byte[] source,List<String> hashes){
     ClassReader reader=new ClassReader(source);
     ClassWriter writer=new ClassWriter(reader,ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
-    final boolean[] removed={false},field={false};
+    final boolean[] initialized={false},field={false},players={false};
     reader.accept(new ClassVisitor(Opcodes.ASM8,writer){
       public FieldVisitor visitField(int access,String name,String desc,String sig,Object value){
         if(name.equals("ALLOWED_HASHES") && desc.equals("Ljava/util/Set;"))field[0]=true;
         return super.visitField(access,name,desc,sig,value);
       }
       public MethodVisitor visitMethod(int access,String name,String desc,String sig,String[] exceptions){
-        if(name.equals("<clinit>") && desc.equals("()V")){removed[0]=true;return null;}
-        return super.visitMethod(access,name,desc,sig,exceptions);
+        MethodVisitor original=super.visitMethod(access,name,desc,sig,exceptions);
+        if(!name.equals("<clinit>") || !desc.equals("()V"))return original;
+        return new MethodVisitor(Opcodes.ASM8,original){
+          public void visitFieldInsn(int opcode,String owner,String name,String descriptor){
+            if(opcode==Opcodes.PUTSTATIC && owner.equals("jp/piricraft/check/PiricraftCheckPlugin")){
+              if(name.equals("ALWAYS_ALLOWED_PLAYERS"))players[0]=true;
+              if(name.equals("ALLOWED_HASHES") && descriptor.equals("Ljava/util/Set;")){
+                initialized[0]=true;
+                super.visitInsn(Opcodes.POP);
+                emitHashes(this,hashes);
+              }
+            }
+            super.visitFieldInsn(opcode,owner,name,descriptor);
+          }
+        };
       }
     },0);
-    if(!removed[0]||!field[0])throw new IllegalStateException("Unrecognized original Check plugin layout");
-    MethodVisitor mv=writer.visitMethod(Opcodes.ACC_STATIC,"<clinit>","()V",null,null);
-    mv.visitCode();
+    if(!initialized[0]||!field[0]||!players[0])throw new IllegalStateException("Check baseline has missing static initialization; use a repaired Check JAR before publishing");
+    return writer.toByteArray();
+  }
+  static void emitHashes(MethodVisitor mv,List<String> hashes){
     mv.visitLdcInsn(hashes.size());
     mv.visitTypeInsn(Opcodes.ANEWARRAY,"java/lang/Object");
     for(int i=0;i<hashes.size();i++){
@@ -61,9 +75,5 @@ public final class PatchCheck {
       mv.visitInsn(Opcodes.AASTORE);
     }
     mv.visitMethodInsn(Opcodes.INVOKESTATIC,"java/util/Set","of","([Ljava/lang/Object;)Ljava/util/Set;",true);
-    mv.visitFieldInsn(Opcodes.PUTSTATIC,"jp/piricraft/check/PiricraftCheckPlugin","ALLOWED_HASHES","Ljava/util/Set;");
-    mv.visitInsn(Opcodes.RETURN);
-    mv.visitMaxs(0,0);mv.visitEnd();
-    return writer.toByteArray();
   }
 }

@@ -10,12 +10,7 @@ public final class PatchCheck {
   public static void main(String[] args) throws Exception {
     if(args.length!=3) throw new Exception("Usage PatchCheck original.jar updated.jar remote-manifest.json");
     // Parse official SHA-256 values from JSON without depending on JSON libraries.
-    String manifest=Files.readString(Path.of(args[2]));
-    manifest=manifest.substring(manifest.indexOf("files"));
-    var hashes=new ArrayList<String>();
-    var match=java.util.regex.Pattern.compile("\\\"sha256\\\"\\s*:\\s*\\\"([A-Fa-f0-9]{64})\\\"").matcher(manifest);
-    while(match.find()) hashes.add(match.group(1).toUpperCase(Locale.ROOT));
-    if(hashes.size()<5 || hashes.size()!=new HashSet<>(hashes).size())throw new Exception("Invalid or duplicate authorized hashes");
+    var hashes=extractModHashes(Files.readString(Path.of(args[2])));
     try(ZipFile original=new ZipFile(args[0]); ZipOutputStream output=new ZipOutputStream(Files.newOutputStream(Path.of(args[1])))){
       boolean found=false;
       Enumeration<? extends ZipEntry> e=original.entries();
@@ -34,6 +29,33 @@ public final class PatchCheck {
       if(cl==null || check.getInputStream(cl).readAllBytes().length<500)throw new Exception("Built Check JAR invalid");
     }
     System.out.println("CHECK_SERVER_MOD_ALLOWLIST_UPDATED count="+hashes.size());
+  }
+  // Select only the files array; a checkServer.sha256 follows it in release manifests.
+  // Taking every sha256 after the "files" key incorrectly adds the Check JAR itself.
+  static List<String> extractModHashes(String manifest){
+    var field=java.util.regex.Pattern.compile("\"files\"\\s*:\\s*\\[").matcher(manifest);
+    if(!field.find())throw new IllegalArgumentException("Missing files array");
+    int start=field.end()-1,depth=0,end=-1;
+    boolean quoted=false,escaped=false;
+    for(int i=start;i<manifest.length();i++){
+      char c=manifest.charAt(i);
+      if(quoted){
+        if(escaped)escaped=false;
+        else if(c=='\\')escaped=true;
+        else if(c=='"')quoted=false;
+      }else if(c=='"')quoted=true;
+      else if(c=='[')depth++;
+      else if(c==']' && --depth==0){end=i;break;}
+    }
+    if(end<0)throw new IllegalArgumentException("Unclosed files array");
+    String files=manifest.substring(start,end+1);
+    var hashes=new ArrayList<String>();
+    var match=java.util.regex.Pattern.compile("\"sha256\"\\s*:\\s*\"([A-Fa-f0-9]{64})\"").matcher(files);
+    while(match.find())hashes.add(match.group(1).toUpperCase(Locale.ROOT));
+    long modPaths=java.util.regex.Pattern.compile("\"path\"\\s*:\\s*\"mods/[^\"]+\\.jar\"").matcher(files).results().count();
+    if(hashes.size()<5 || hashes.size()!=modPaths || hashes.size()!=new HashSet<>(hashes).size())
+      throw new IllegalArgumentException("Invalid, missing, or duplicate authorized MOD hashes");
+    return hashes;
   }
   static byte[] rewrite(byte[] source,List<String> hashes){
     ClassReader reader=new ClassReader(source);

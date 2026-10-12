@@ -10,6 +10,7 @@ public class TestPatchCheck {
     var writer=new ClassWriter(0);
     new ClassReader(bytes).accept(new ClassVisitor(Opcodes.ASM8,writer){
       public void visit(int v,int a,String n,String s,String parent,String[] interfaces){super.visit(v,a,n,s,"java/lang/Object",null);}
+      public FieldVisitor visitField(int a,String n,String d,String s,Object v){return (a&Opcodes.ACC_STATIC)!=0?super.visitField(a,n,d,s,v):null;}
       public MethodVisitor visitMethod(int a,String n,String d,String s,String[] e){return n.equals("<clinit>")?super.visitMethod(a,n,d,s,e):null;}
     },0);
     return new Loader().load(writer.toByteArray());

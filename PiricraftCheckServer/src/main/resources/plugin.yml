@@ -1,0 +1,13 @@
+name: PiricraftCheck
+version: 1.0.0
+main: jp.piricraft.check.PiricraftCheckPlugin
+api-version: '1.21'
+
+commands:
+  piricraftcheck:
+    description: PiricraftCheck settings
+    permission: piricraftcheck.admin
+
+permissions:
+  piricraftcheck.admin:
+    default: op

@@ -39,8 +39,6 @@ Write-Host "BASE_VERSION=$old NEXT_VERSION=$new MODE=$mode"
 if($dry){$jar="work/$filename"}else{$jar="work/$filename"}
 gh release download $oldtag --repo $repo --pattern PiriCraft.exe --dir work
 if($LASTEXITCODE -ne 0){throw 'Baseline launcher download failed'}
-gh release download $oldtag --repo $repo --pattern PiricraftCheckServer-1.0.0.jar --dir work
-if($LASTEXITCODE -ne 0){throw 'Baseline Check server download failed'}
 @'
 from pathlib import Path
 import sys
@@ -58,9 +56,14 @@ if($LASTEXITCODE -ne 0){throw 'Cecil resource patch failed'}
 python PiriCraftModPublisher/ServerBuilder/repack.py --base work/PiriCraft.exe --dll work/PiriCraft.updated.dll --out dist/PiriCraft.exe --old $old --new $new
 if($LASTEXITCODE -ne 0){throw 'EXE bundle repack failed'}
 $env:JAVA_TOOL_OPTIONS='--add-exports=java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED'
+Push-Location PiricraftCheckServer
+try {
+  ./gradlew.bat --no-daemon build "-PreleaseVersion=$new"
+  if($LASTEXITCODE -ne 0){throw 'Check server source build or updater tests failed'}
+} finally { Pop-Location }
 javac --add-exports=java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED -d work PiriCraftModPublisher/ServerBuilder/PatchCheck.java PiriCraftModPublisher/ServerBuilder/TestPatchCheck.java
 if($LASTEXITCODE -ne 0){throw 'Check server Java tool compilation failed'}
-java --add-exports=java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED -cp work PatchCheck work/PiricraftCheckServer-1.0.0.jar dist/PiricraftCheckServer-1.0.0.jar work/updated-manifest.json
+java --add-exports=java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED -cp work PatchCheck PiricraftCheckServer/build/libs/PiricraftCheckServer-1.0.0.jar dist/PiricraftCheckServer-1.0.0.jar work/updated-manifest.json
 if($LASTEXITCODE -ne 0){throw 'Check server SHA rewrite failed'}
 java --add-exports=java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED -cp work TestPatchCheck dist/PiricraftCheckServer-1.0.0.jar work/updated-manifest.json
 if($LASTEXITCODE -ne 0){throw 'Check server initialization and manifest validation failed'}
@@ -106,6 +109,12 @@ $final.launcher.version=$new
 $final.launcher.url="https://github.com/$repo/releases/download/$tag/PiriCraft.exe"
 $final.launcher.sha256=(Get-FileHash dist/PiriCraft.exe -Algorithm SHA256).Hash
 $final.launcher.size=[int64](Get-Item dist/PiriCraft.exe).Length
+$final | Add-Member -Force -NotePropertyName checkServer -NotePropertyValue @{
+  version=$new
+  url="https://github.com/$repo/releases/download/$tag/PiricraftCheckServer-1.0.0.jar"
+  sha256=(Get-FileHash dist/PiricraftCheckServer-1.0.0.jar -Algorithm SHA256).Hash
+  size=[int64](Get-Item dist/PiricraftCheckServer-1.0.0.jar).Length
+}
 $payload=$final | ConvertTo-Json -Depth 60
 $null=$payload | ConvertFrom-Json -Depth 60
 $encoded=[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($payload+"`n"))

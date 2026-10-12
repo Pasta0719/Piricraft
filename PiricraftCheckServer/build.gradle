@@ -1,0 +1,45 @@
+plugins {
+    id "java"
+}
+
+group = "jp.piricraft"
+version = "1.0.0"
+
+repositories {
+    mavenCentral()
+
+    maven {
+        name = "papermc"
+        url = "https://repo.papermc.io/repository/maven-public/"
+    }
+}
+
+dependencies {
+    compileOnly "io.papermc.paper:paper-api:1.21-R0.1-SNAPSHOT"
+    compileOnly "com.google.code.gson:gson:2.10.1"
+    testImplementation "com.google.code.gson:gson:2.10.1"
+}
+
+tasks.register('releaseMetadata') {
+    def releaseVersion = providers.gradleProperty('releaseVersion').orElse('1.1.26')
+    inputs.property('releaseVersion', releaseVersion)
+    outputs.file(layout.buildDirectory.file('release-metadata/check-release.properties'))
+    doLast {
+        def output = layout.buildDirectory.file('release-metadata/check-release.properties').get().asFile
+        output.parentFile.mkdirs()
+        output.text = 'version=' + releaseVersion.get() + '\n'
+    }
+}
+processResources { dependsOn releaseMetadata; from(layout.buildDirectory.dir('release-metadata')) }
+tasks.register('testAutoUpdater', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'jp.piricraft.check.CheckAutoUpdaterTest'
+}
+check.dependsOn testAutoUpdater
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}

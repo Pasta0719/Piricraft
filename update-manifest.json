@@ -2,10 +2,10 @@
   "manifestVersion": 1,
   "deleteUnknownMods": true,
   "launcher": {
-    "version": "1.1.30",
-    "url": "https://github.com/Pasta0719/Piricraft/releases/download/launcher-v1.1.30/PiriCraft.exe",
-    "sha256": "F52F9244EDD50D159BFF8A32DA14019BB32DDAE38EF06922D05C4899F4938EFD",
-    "size": 97662181
+    "version": "1.1.31",
+    "url": "https://github.com/Pasta0719/Piricraft/releases/download/launcher-v1.1.31/PiriCraft.exe",
+    "sha256": "2C582912F06431D9D8AC5CE3105539D08A56726A213C4550EA805D569E820B28",
+    "size": 97716453
   },
   "files": [
     {
@@ -110,12 +110,18 @@
       "sha256": "AF07EF516F4152704B55972A7204AD2955FA21E5B67AFAEAAC96E6742022C144",
       "source": "embedded",
       "resource": "PiriCraft.Mods.upload_af07ef516f415270.jar"
+    },
+    {
+      "path": "mods/PiriCraft-Abyss-Fabric-0.1.0.jar",
+      "sha256": "1AE138D81FCE6A0DE2A5C65BAE8EBF38F49C747539ED565C1687052A0ACBB5D2",
+      "source": "embedded",
+      "resource": "PiriCraft.Mods.upload_1ae138d81fce6a0d.jar"
     }
   ],
   "checkServer": {
-    "version": "1.1.30",
-    "sha256": "51BF970E1D03E9D783AB0EFE2E4A07523DB9F89F93CE9E41059F5F1A3D0E60F4",
-    "size": 21652,
-    "url": "https://github.com/Pasta0719/Piricraft/releases/download/launcher-v1.1.30/PiricraftCheckServer-1.0.0.jar"
+    "size": 21714,
+    "sha256": "A574E51BF179C2BD39E425B69B975DD4EE9814A27899202720F46093E98D874A",
+    "version": "1.1.31",
+    "url": "https://github.com/Pasta0719/Piricraft/releases/download/launcher-v1.1.31/PiricraftCheckServer-1.0.0.jar"
   }
 }

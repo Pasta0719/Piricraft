@@ -71,9 +71,41 @@ public class AbyssRenderStatePatcher implements Opcodes {
     Label clean=new Label();m.visitVarInsn(ALOAD,13);m.visitJumpInsn(IFNULL,clean);
     m.visitVarInsn(ALOAD,13);m.visitInsn(ATHROW);m.visitLabel(clean);m.visitInsn(RETURN);m.visitMaxs(0,0);m.visitEnd();
     ClassWriter cw=new ClassWriter(ClassWriter.COMPUTE_MAXS|ClassWriter.COMPUTE_FRAMES){
-      @Override protected String getCommonSuperClass(String a,String b){return a.equals(b)?a:"java/lang/Object";}
+      @Override protected String getCommonSuperClass(String a,String b) {
+        if (a.equals(b)) return a;
+        // A blanket Object fallback broke the IOException/RuntimeException
+        // exception handler and produced an invalid JVM StackMapTable.
+        if (a.startsWith("java/") && b.startsWith("java/")) {
+          try {
+            Class<?> left=Class.forName(a.replace('/', '.'));
+            Class<?> right=Class.forName(b.replace('/', '.'));
+            if (left.isAssignableFrom(right)) return a;
+            if (right.isAssignableFrom(left)) return b;
+            if (left.isInterface() || right.isInterface()) return "java/lang/Object";
+            while ((left=left.getSuperclass())!=null) {
+              if (left.isAssignableFrom(right)) return left.getName().replace('.', '/');
+            }
+          } catch (ClassNotFoundException failure) {
+            throw new IllegalStateException("Could not resolve JDK type for stack map merge",failure);
+          }
+        }
+        return "java/lang/Object";
+      }
     };
-    node.accept(cw);return cw.toByteArray();
+    node.accept(cw);
+    byte[] output = cw.toByteArray();
+    ClassNode verified = new ClassNode(); new ClassReader(output).accept(verified,0);
+    MethodNode target = verified.methods.stream().filter(method -> method.name.equals("renderOriginal"))
+        .findFirst().orElseThrow();
+    boolean correctExceptionFrame = false;
+    for (AbstractInsnNode insn=target.instructions.getFirst();insn!=null;insn=insn.getNext()) {
+      if (insn instanceof FrameNode frame && frame.stack!=null &&
+          frame.stack.size()==1 && "java/lang/Exception".equals(frame.stack.get(0))) {
+        correctExceptionFrame = true;
+      }
+    }
+    if (!correctExceptionFrame) throw new IllegalStateException("Generated invalid exception handler StackMapTable");
+    return output;
   }
   public static void main(String[] args)throws Exception{
     if(args.length!=2)throw new IllegalArgumentException("INPUT_CLASS OUTPUT_CLASS");

@@ -1,0 +1,119 @@
+name: Repair Abyss 0.1.3 Java verifier failure and publish 0.1.4
+on:
+  push:
+    paths:
+      - '.github/workflows/publish-abyss-verify-fix-014.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: abyss-verify-fix-014
+  cancel-in-progress: false
+jobs:
+  repair-verify-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Assert latest official state and download base JAR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p work
+          gh api "repos/$GITHUB_REPOSITORY/contents/update-manifest.json" > work/remote.json
+          python3 - <<'PY'
+          import base64,json
+          from pathlib import Path
+          raw=json.loads(Path('work/remote.json').read_text())
+          manifest=json.loads(base64.b64decode(raw['content']))
+          assert manifest['launcher']['version']=='1.1.35', 'Publisher version changed: rebase rather than overwrite'
+          abyss=[f for f in manifest['files'] if 'PiriCraft-Abyss-Fabric' in f['path']]
+          assert len(abyss)==1, 'Expected exactly one Abyss MOD'
+          assert abyss[0]['path']=='mods/PiriCraft-Abyss-Fabric-0.1.3.jar'
+          assert abyss[0]['sha256'].upper()=='71C2EE296D538E3C3CEC587FCA06EB47E0CCFB8E54CE09DB25E644CB280BC690'
+          print('PASS baseline: launcher 1.1.35 and unique Abyss 0.1.3')
+          PY
+          gh release download launcher-v1.1.35 --repo "$GITHUB_REPOSITORY" --pattern PiriCraft-Abyss-Fabric-0.1.3.jar --dir work
+      - name: Repair the exact invalid JVM stack-map frame
+        run: |
+          set -euo pipefail
+          javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED PiriCraftUpdater/AbyssFrameFix.java
+          unzip -p work/PiriCraft-Abyss-Fabric-0.1.3.jar jp/piricraft/abyss/fabric/AbyssPostProcessor.class > work/renderer-original.class
+          java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp PiriCraftUpdater AbyssFrameFix work/renderer-original.class work/renderer-fixed.class
+          javap -v -p work/renderer-fixed.class > work/renderer-javap.txt
+          python3 - <<'PY'
+          from pathlib import Path
+          source=Path('work/renderer-javap.txt').read_text()
+          method=source.split('private void renderOriginal(',1)[1].split('long lastGpuNanos()',1)[0]
+          assert 'stack = [ class java/lang/Exception ]' in method
+          assert 'stack = [ class java/lang/Object ]' not in method
+          print('PASS JVM handler StackMapTable now has Exception, not Object')
+          PY
+      - name: Build metadata-only version bump and validate exact JAR contents
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,zipfile
+          from pathlib import Path
+          base=Path('work/PiriCraft-Abyss-Fabric-0.1.3.jar')
+          dest=Path('work/PiriCraft-Abyss-Fabric-0.1.4.jar')
+          cls='jp/piricraft/abyss/fabric/AbyssPostProcessor.class'
+          assert hashlib.sha256(base.read_bytes()).hexdigest().upper()=='71C2EE296D538E3C3CEC587FCA06EB47E0CCFB8E54CE09DB25E644CB280BC690'
+          with zipfile.ZipFile(base) as src,zipfile.ZipFile(dest,'w') as out:
+              metadata=json.loads(src.read('fabric.mod.json'))
+              assert metadata['version']=='0.1.3'
+              metadata['version']='0.1.4'
+              for entry in src.infolist():
+                  payload=src.read(entry.filename)
+                  if entry.filename==cls:payload=Path('work/renderer-fixed.class').read_bytes()
+                  if entry.filename=='fabric.mod.json':payload=(json.dumps(metadata,indent=2,ensure_ascii=False)+'\n').encode()
+                  out.writestr(entry,payload)
+          with zipfile.ZipFile(base) as src,zipfile.ZipFile(dest) as out:
+              assert out.testzip() is None
+              assert src.namelist()==out.namelist()
+              for entry in src.namelist():
+                  if entry not in [cls,'fabric.mod.json']:assert src.read(entry)==out.read(entry),entry
+              meta=json.loads(out.read('fabric.mod.json'))
+              assert meta['version']=='0.1.4'
+              assert meta['depends']['minecraft']=='1.21' and meta['depends']['sodium']=='0.6.13'
+              assert 'forceLength' in out.read('assets/piricraft_abyss/shaders/abyss.fsh').decode()
+          digest=hashlib.sha256(dest.read_bytes()).hexdigest().upper()
+          assert digest=='E8776FFBFE54A99DBEEEC142B44F35DCD661217DD76517220376A6D05ADE2B54',digest
+          print('PASS: exact v0.1.4 SHA256, entry by entry regression, dependencies and GLSL unchanged')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-abyss-014
+          path: work/PiriCraft-Abyss-Fabric-0.1.4.jar
+          retention-days: 30
+      - name: Dispatch official launcher and Check auto-update publisher exactly once
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag=publisher-input-abyss-jvm-frame-fix-014
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo 'ERROR: Existing staging release means publication already dispatched. Refusing duplicate.'
+            exit 1
+          fi
+          gh release create "$tag" work/PiriCraft-Abyss-Fabric-0.1.4.jar --repo "$GITHUB_REPOSITORY" --title 'Abyss 0.1.4 verified fix input' --notes 'Repair JVM VerifyError in the 0.1.3 exception handler stack frame; retain hand GL state restoration, basic force, fog and Sodium 0.6.13.' --draft
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          Path('work/dispatch.json').write_text(json.dumps({'ref':'main','inputs': {
+              'mode':'update',
+              'target':'mods/PiriCraft-Abyss-Fabric-0.1.3.jar',
+              'stage_tag':'publisher-input-abyss-jvm-frame-fix-014',
+              'filename':'PiriCraft-Abyss-Fabric-0.1.4.jar',
+              'sha256':'E8776FFBFE54A99DBEEEC142B44F35DCD661217DD76517220376A6D05ADE2B54',
+              'dry_run':'false'
+          }}))
+          PY
+          gh api "repos/$GITHUB_REPOSITORY/actions/workflows/publish-mod-from-app.yml/dispatches" -X POST --input work/dispatch.json
+          echo 'Official publisher dispatched once; updates embedded EXE MOD, Check hashes, and manifest atomically.'

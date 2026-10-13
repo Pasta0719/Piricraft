@@ -1,0 +1,82 @@
+name: Publish Abyss Minecraft 1.21 compatibility build
+on:
+  push:
+    paths:
+      - '.github/workflows/publish-abyss-mc121.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  patch-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download trusted upstream published artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p upstream output
+          gh release download launcher-v1.1.31 --repo "$GITHUB_REPOSITORY" --dir upstream --pattern 'PiriCraft-Abyss-Fabric-0.1.0.jar'
+          gh release download launcher-v1.1.31 --repo "$GITHUB_REPOSITORY" --dir upstream --pattern 'PiricraftCheckServer-1.0.0.jar'
+      - name: Port Abyss to Minecraft 1.21 and validate package content
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,zipfile,pathlib
+          source=pathlib.Path('upstream/PiriCraft-Abyss-Fabric-0.1.0.jar')
+          original=pathlib.Path('upstream/PiricraftCheckServer-1.0.0.jar')
+          out=pathlib.Path('output/PiriCraft-Abyss-Fabric-0.1.1-mc1.21.jar')
+          check=pathlib.Path('output/PiricraftCheckServer-1.0.0-abyss-mc1.21.jar')
+          original_sha=hashlib.sha256(source.read_bytes()).hexdigest().upper()
+          assert original_sha=='1AE138D81FCE6A0DE2A5C65BAE8EBF38F49C747539ED565C1687052A0ACBB5D2'
+          assert hashlib.sha256(original.read_bytes()).hexdigest().upper()=='A574E51BF179C2BD39E425B69B975DD4EE9814A27899202720F46093E98D874A'
+          with zipfile.ZipFile(source) as z: metadata=json.loads(z.read('fabric.mod.json'))
+          assert metadata['version']=='0.1.0' and metadata['depends']['minecraft']=='1.21.1'
+          assert metadata['depends']['sodium']=='0.6.13'
+          metadata['version']='0.1.1'
+          metadata['depends']['minecraft']='1.21'
+          metadata['depends']['fabric-api']='>=0.102.0+1.21'
+          metadata['depends']['sodium']='0.5.11'
+          metadata['suggests'].pop('iris',None)
+          edited={'fabric.mod.json','jp/piricraft/abyss/fabric/PiriCraftAbyssClient.class'}
+          with zipfile.ZipFile(source) as src,zipfile.ZipFile(out,'w') as dst:
+              for info in src.infolist():
+                  content=src.read(info)
+                  if info.filename=='fabric.mod.json':content=(json.dumps(metadata,indent=2,ensure_ascii=False)+'\n').encode()
+                  if info.filename=='jp/piricraft/abyss/fabric/PiriCraftAbyssClient.class':
+                      assert content.count(b'0.6.13')==1
+                      content=content.replace(b'0.6.13',b'0.5.11')
+                  dst.writestr(info,content)
+          new_sha=hashlib.sha256(out.read_bytes()).hexdigest().upper()
+          with zipfile.ZipFile(source) as src,zipfile.ZipFile(out) as dst:
+              assert dst.testzip() is None
+              assert set(src.namelist())==set(dst.namelist())
+              for item in src.namelist():
+                  if item not in edited:assert src.read(item)==dst.read(item),item
+              assert new_sha=='A28FE463E38C917C7EB3EA71758CF6E2361DF2F3B01703191F0A5E9530F76B57'
+          found=0
+          with zipfile.ZipFile(original) as src,zipfile.ZipFile(check,'w') as dst:
+              for info in src.infolist():
+                  content=src.read(info)
+                  if info.filename.endswith('.class'):
+                      found+=content.count(original_sha.encode())
+                      content=content.replace(original_sha.encode(),new_sha.encode())
+                  dst.writestr(info,content)
+          assert found==1
+          with zipfile.ZipFile(check) as z:assert z.testzip() is None
+          assert hashlib.sha256(check.read_bytes()).hexdigest().upper()=='5AFC262B3DBBD3A945B0B28CEF4CF9F1A732FF82F2154F1E6526DB33AE485B52'
+          print('PASS: 1.21 dependency metadata, Sodium guard, Check allowlist, SHA256, archive contents')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: abyss-mc121-compatibility-jars
+          path: output/*.jar
+          retention-days: 30
+      - name: Publish separate compatibility release (do not change launcher)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view abyss-mc1.21-v0.1.1 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload abyss-mc1.21-v0.1.1 output/*.jar --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create abyss-mc1.21-v0.1.1 output/*.jar --repo "$GITHUB_REPOSITORY" --title 'Abyss Minecraft 1.21 compatibility v0.1.1' --notes 'Minecraft 1.21 / Fabric API 0.102.0+1.21 / Sodium 0.5.11. Updated Abyss metadata and Sodium runtime guard, plus corresponding Check allowlist. No runtime Minecraft GUI test performed. Does not update launcher or manifest; install both JARs together.'
+          fi

@@ -1,0 +1,82 @@
+name: Publish Abyss force and held-item visual fix
+on:
+  push:
+    paths:
+      - '.github/workflows/publish-abyss-force-hand-fix.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: write
+jobs:
+  verify-stage-dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Check latest launcher and download known-good Abyss v0.1.2
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p work
+          gh api "repos/$GITHUB_REPOSITORY/contents/update-manifest.json" > work/manifest.json
+          python3 - <<'PY'
+          import base64, json
+          from pathlib import Path
+          obj=json.loads(Path('work/manifest.json').read_text())
+          manifest=json.loads(base64.b64decode(obj['content']))
+          files=[e for e in manifest['files'] if 'PiriCraft-Abyss-Fabric' in e['path']]
+          assert len(files)==1, f'Expected exactly one Abyss MOD: {files}'
+          assert files[0]['path']=='mods/PiriCraft-Abyss-Fabric-0.1.2.jar'
+          assert files[0]['sha256'].upper()=='30C4FEA3B9D05EE5910053DF23248D5A08FFD6EBB238C14920656ACD3B1FC5F3'
+          Path('work/launcher-version.txt').write_text(str(manifest['launcher']['version']))
+          print('Existing sole Abyss MOD verified; launcher',manifest['launcher']['version'])
+          PY
+          version=$(cat work/launcher-version.txt)
+          gh release download "launcher-v$version" --repo "$GITHUB_REPOSITORY" --pattern 'PiriCraft-Abyss-Fabric-0.1.2.jar' --dir work
+      - name: Patch class and shader; validate unchanged JAR entries
+        run: |
+          set -euo pipefail
+          javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED PiriCraftUpdater/AbyssRenderStatePatcher.java
+          cd work
+          unzip -p PiriCraft-Abyss-Fabric-0.1.2.jar jp/piricraft/abyss/fabric/AbyssPostProcessor.class > AbyssPostProcessor.class
+          java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp ../PiriCraftUpdater AbyssRenderStatePatcher AbyssPostProcessor.class AbyssPostProcessor.patched.class
+          python3 ../PiriCraftUpdater/patch_abyss_force_and_hand.py PiriCraft-Abyss-Fabric-0.1.2.jar AbyssPostProcessor.patched.class PiriCraft-Abyss-Fabric-0.1.3.jar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-abyss-visual-v013
+          path: work/PiriCraft-Abyss-Fabric-0.1.3.jar
+          retention-days: 30
+      - name: Stage and invoke one official publisher update
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          stage=publisher-input-abyss-force-hand-v013
+          jar=PiriCraft-Abyss-Fabric-0.1.3.jar
+          sha=$(sha256sum "work/$jar" | awk '{print toupper($1)}')
+          if gh release view "$stage" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo 'Staging tag already exists; refusing duplicate release or publisher run'
+            exit 1
+          fi
+          gh release create "$stage" "work/$jar" --repo "$GITHUB_REPOSITORY" --title 'PiriCraft Abyss visual fix v0.1.3 input' --notes 'Validated publisher stage. GL state guard for first-person held items and distinct near-clear base force rendering.' --prerelease --latest=false
+          python3 - "$sha" <<'PY'
+          import json,sys
+          from pathlib import Path
+          Path('work/dispatch.json').write_text(json.dumps({
+            'ref':'main',
+            'inputs': {
+              'mode':'update',
+              'target':'mods/PiriCraft-Abyss-Fabric-0.1.2.jar',
+              'stage_tag':'publisher-input-abyss-force-hand-v013',
+              'filename':'PiriCraft-Abyss-Fabric-0.1.3.jar',
+              'sha256':sys.argv[1],
+              'dry_run':'false'
+            }
+          }))
+          PY
+          gh api "repos/$GITHUB_REPOSITORY/actions/workflows/publish-mod-from-app.yml/dispatches" -X POST --input work/dispatch.json
+          echo "PUBLISHER_DISPATCHED_SHA256=$sha"

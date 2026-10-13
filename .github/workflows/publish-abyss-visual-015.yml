@@ -1,0 +1,83 @@
+name: Build and publish Abyss 0.1.5 visual correction
+on:
+  push:
+    paths:
+      - '.github/workflows/publish-abyss-visual-015.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: abyss-visual-015
+  cancel-in-progress: false
+jobs:
+  verify-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify current official state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p work
+          gh api "repos/$GITHUB_REPOSITORY/contents/update-manifest.json" > work/current.json
+          python3 - <<'PY'
+          import base64,json
+          from pathlib import Path
+          m=json.loads(base64.b64decode(json.loads(Path('work/current.json').read_text())['content']))
+          assert m['launcher']['version']=='1.1.36', 'Official launcher changed, stop to avoid stale replace'
+          a=[x for x in m['files'] if 'PiriCraft-Abyss-Fabric' in x['path']]
+          assert len(a)==1 and a[0]['path']=='mods/PiriCraft-Abyss-Fabric-0.1.4.jar'
+          assert a[0]['sha256'].upper()=='E8776FFBFE54A99DBEEEC142B44F35DCD661217DD76517220376A6D05ADE2B54'
+          print('PASS existing manifest and exact source digest')
+          PY
+          gh release download launcher-v1.1.36 --repo "$GITHUB_REPOSITORY" --pattern PiriCraft-Abyss-Fabric-0.1.4.jar --dir work
+      - name: Patch only fragment shader and version metadata
+        run: |
+          set -euo pipefail
+          python3 PiriCraftUpdater/patch_abyss_visual_015.py work/PiriCraft-Abyss-Fabric-0.1.4.jar work/PiriCraft-Abyss-Fabric-0.1.5.jar | tee work/check.log
+          awk -F= '/^SHA256=/{print $2}' work/check.log > work/hash.txt
+      - name: Validate GLSL shader compilation
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq glslang-tools
+          unzip -p work/PiriCraft-Abyss-Fabric-0.1.5.jar assets/piricraft_abyss/shaders/abyss.fsh > work/abyss.frag
+          glslangValidator -S frag work/abyss.frag
+          echo 'PASS OpenGL GLSL 150 shader compilation'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: abyss-visual-015
+          path: |
+            work/PiriCraft-Abyss-Fabric-0.1.5.jar
+            work/hash.txt
+          retention-days: 30
+      - name: Stage and dispatch official updater exactly once
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag=publisher-input-abyss-visual-fix-015
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo 'Existing stage detected. Do not dispatch duplicate publication.'
+            exit 1
+          fi
+          gh release create "$tag" work/PiriCraft-Abyss-Fabric-0.1.5.jar --repo "$GITHUB_REPOSITORY" --title 'Verified Abyss 0.1.5 visual correction input' --notes 'Shader-only luminous white ABYSS, smooth cross-layer endpoint fades, stable geometry clearance and spatial noise; preserved java classes and FOG.' --draft
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          digest=Path('work/hash.txt').read_text().strip()
+          assert len(digest)==64
+          Path('work/dispatch.json').write_text(json.dumps({'ref':'main','inputs':{
+            'mode':'update',
+            'target':'mods/PiriCraft-Abyss-Fabric-0.1.4.jar',
+            'stage_tag':'publisher-input-abyss-visual-fix-015',
+            'filename':'PiriCraft-Abyss-Fabric-0.1.5.jar',
+            'sha256':digest,
+            'dry_run':'false'
+          }}))
+          PY
+          gh api "repos/$GITHUB_REPOSITORY/actions/workflows/publish-mod-from-app.yml/dispatches" -X POST --input work/dispatch.json
+          echo 'Official launcher+Check auto-update workflow dispatched.'

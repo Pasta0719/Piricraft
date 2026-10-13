@@ -1,0 +1,73 @@
+name: Publish Abyss Sodium 0.6.13 compatibility fix
+on:
+  push:
+    paths:
+      - '.github/workflows/publish-abyss-sodium-fix.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: write
+jobs:
+  stage-and-dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate current published release and mod list
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p work
+          gh api "repos/$GITHUB_REPOSITORY/contents/update-manifest.json" > work/current.json
+          python3 - <<'PY'
+          import base64,json
+          from pathlib import Path
+          info=json.loads(Path('work/current.json').read_text())
+          manifest=json.loads(base64.b64decode(info['content']))
+          names=[x['path'] for x in manifest['files']]
+          assert names.count('mods/PiriCraft-Abyss-Fabric-0.1.1-mc1.21.jar')==1, 'Unexpected currently installed Abyss MOD'
+          assert 'mods/PiriCraft-Abyss-Fabric-0.1.2-mc1.21-sodium0.6.13.jar' not in names
+          record=next(x for x in manifest['files'] if x['path']=='mods/PiriCraft-Abyss-Fabric-0.1.1-mc1.21.jar')
+          assert record['sha256'].upper()=='A28FE463E38C917C7EB3EA71758CF6E2361DF2F3B01703191F0A5E9530F76B57'
+          print('PASS existing manifest:',manifest['launcher']['version'])
+          PY
+      - name: Reproduce and audit the binary compatibility patch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download launcher-v1.1.33 --repo "$GITHUB_REPOSITORY" --pattern 'PiriCraft-Abyss-Fabric-0.1.1-mc1.21.jar' --dir work
+          python3 PiriCraftUpdater/patch_abyss_sodium_0_6_13.py work/PiriCraft-Abyss-Fabric-0.1.1-mc1.21.jar work/PiriCraft-Abyss-Fabric-0.1.2-mc1.21-sodium0.6.13.jar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-abyss-mc121-sodium0613
+          path: work/PiriCraft-Abyss-Fabric-0.1.2-mc1.21-sodium0.6.13.jar
+          retention-days: 30
+      - name: Stage verified JAR and dispatch existing publisher (updates launcher, manifest, Check together)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag=publisher-input-abyss-sodium-0613-fix
+          file=PiriCraft-Abyss-Fabric-0.1.2-mc1.21-sodium0.6.13.jar
+          sha=30C4FEA3B9D05EE5910053DF23248D5A08FFD6EBB238C14920656ACD3B1FC5F3
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$tag" "work/$file" --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$tag" "work/$file" --repo "$GITHUB_REPOSITORY" --title 'Validated Abyss Sodium compatibility input' --notes 'Temporary publisher input to replace Abyss 0.1.1 with 0.1.2; not an independent launcher release.' --prerelease --latest=false
+          fi
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          Path('work/dispatch.json').write_text(json.dumps({
+            'ref': 'main',
+            'inputs': {
+              'mode': 'update',
+              'target': 'mods/PiriCraft-Abyss-Fabric-0.1.1-mc1.21.jar',
+              'stage_tag': 'publisher-input-abyss-sodium-0613-fix',
+              'filename': 'PiriCraft-Abyss-Fabric-0.1.2-mc1.21-sodium0.6.13.jar',
+              'sha256': '30C4FEA3B9D05EE5910053DF23248D5A08FFD6EBB238C14920656ACD3B1FC5F3',
+              'dry_run': 'false'
+            }
+          }))
+          PY
+          gh api "repos/$GITHUB_REPOSITORY/actions/workflows/publish-mod-from-app.yml/dispatches" -X POST --input work/dispatch.json
+          echo 'PUBLISHER_DISPATCHED: Automatic launcher + PiriCraftCheck update requested'

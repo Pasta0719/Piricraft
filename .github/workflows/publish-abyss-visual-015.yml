@@ -1,4 +1,4 @@
-name: Build and publish Abyss 0.1.5 visual correction
+name: Build and publish Abyss 0.1.5 visual correction (fixed serialization)
 on:
   push:
     paths:

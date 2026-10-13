@@ -94,7 +94,7 @@ def main():
         for e in src.infolist():
             data=src.read(e.filename)
             if e.filename==SHADER:data=fixed.encode()
-            if e.filename=="fabric.mod.json":data=(json.dumps(metadata,ensure_ascii=False,indent=2)+"\\n").encode()
+            if e.filename=="fabric.mod.json":data=(json.dumps(metadata,ensure_ascii=False,indent=2)+"\n").encode()
             dst.writestr(e,data)
     with zipfile.ZipFile(base) as src,zipfile.ZipFile(dest) as dst:
         assert dst.testzip() is None and src.namelist()==dst.namelist()

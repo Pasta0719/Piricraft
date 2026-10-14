@@ -60,6 +60,7 @@ internal sealed class Window : Form {
     readonly string dir=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"PiriCraftModPublisher");
     readonly RadioButton updating=new(){Text="既存MODを更新",Checked=true,AutoSize=true};
     readonly RadioButton adding=new(){Text="MODを新規追加",AutoSize=true};
+    readonly RadioButton removing=new(){Text="既存MODを削除",AutoSize=true,ForeColor=Color.DarkRed};
     readonly ComboBox mods=new(){DropDownStyle=ComboBoxStyle.DropDownList,Width=520};
     readonly TextBox jar=new(){ReadOnly=true,Width=630};
     readonly TextBox sharedKey=new(){UseSystemPasswordChar=true,PlaceholderText="所有者から配布されたリポジトリ限定の公開キー（任意）",Dock=DockStyle.Fill};
@@ -97,7 +98,7 @@ internal sealed class Window : Form {
         panel.Controls.Add(new Label{Text="PiriCraft MOD Publisher",Font=new Font("Yu Gothic UI",19,FontStyle.Bold),AutoSize=true},0,0);
         title.Text="GitHubの正規MOD一覧を読み込みます";panel.Controls.Add(title,0,1);
         var choices=new FlowLayoutPanel{Dock=DockStyle.Fill,WrapContents=false};
-        choices.Controls.Add(updating);choices.Controls.Add(adding);choices.Controls.Add(load);choices.Controls.Add(auth);panel.Controls.Add(choices,0,2);
+        choices.Controls.Add(updating);choices.Controls.Add(adding);choices.Controls.Add(removing);choices.Controls.Add(load);choices.Controls.Add(auth);panel.Controls.Add(choices,0,2);
         panel.Controls.Add(new Label{Text="更新元を選択：GitHubで現在配布されている正規MOD一覧",AutoSize=true},0,3);
         mods.Dock=DockStyle.Fill;panel.Controls.Add(mods,0,4);
         panel.Controls.Add(new Label{Text="今回入れる新しいMOD（あなたのPC内のJAR）",AutoSize=true},0,5);
@@ -117,11 +118,13 @@ internal sealed class Window : Form {
         keyRow.Controls.Add(sharedKey,0,1);
         panel.Controls.Add(keyRow,0,7);
         panel.Controls.Add(bottom,0,8);
-        updating.CheckedChanged+=(_,_)=>mods.Enabled=updating.Checked&&!running;
-        adding.CheckedChanged+=(_,_)=>mods.Enabled=updating.Checked&&!running;
+        updating.CheckedChanged+=(_,_)=>UpdateMode();
+        adding.CheckedChanged+=(_,_)=>UpdateMode();
+        removing.CheckedChanged+=(_,_)=>UpdateMode();
         load.Click+=async(_,_)=>await Reload();
         auth.Click+=async(_,_)=>await Login();
         submit.Click+=async(_,_)=>await Publish();
+        UpdateMode();
         Shown+=async(_,_)=>{
             await Reload();await CheckAuth();
             if(this.integrationJar!=null) {
@@ -157,7 +160,15 @@ internal sealed class Window : Form {
         output.AppendText(s+Environment.NewLine);try{File.AppendAllText(Path.Combine(dir,"publisher.log"),s+Environment.NewLine);}catch{}
     }
     void State(string message) {if(InvokeRequired){BeginInvoke(()=>State(message));return;}status.Text=message;}
-    void Busy(bool yes){running=yes;submit.Enabled=!yes;load.Enabled=!yes;auth.Enabled=!yes;mods.Enabled=!yes;updating.Enabled=!yes;adding.Enabled=!yes;if(!yes)mods.Enabled=updating.Checked;}
+    void UpdateMode(){
+        mods.Enabled=!running && (updating.Checked||removing.Checked);
+        jar.Enabled=!running && !removing.Checked;
+        submit.Text=removing.Checked?"選択したMODを削除  →  GitHubでEXE・Checkを再生成して自動更新":
+            "更新する  →  GitHubでEXE・Checkを生成して自動更新";
+        submit.BackColor=removing.Checked?Color.FromArgb(165,51,51):Color.FromArgb(30,94,181);
+        if(removing.Checked)hash.Text="削除時は新しいJARを選択しません";
+    }
+    void Busy(bool yes){running=yes;submit.Enabled=!yes;load.Enabled=!yes;auth.Enabled=!yes;mods.Enabled=!yes;updating.Enabled=!yes;adding.Enabled=!yes;removing.Enabled=!yes;if(!yes)UpdateMode();}
     async Task Reload(){try{
         State("GitHub正規MODを取得中...");
         using var req=new HttpRequestMessage(HttpMethod.Get,Manifest+"?nocache="+DateTime.UtcNow.Ticks);
@@ -227,15 +238,20 @@ internal sealed class Window : Form {
     async Task Publish() {
         if(running)return;
         try {
-            if(!File.Exists(jar.Text))throw new Exception("新しいMODのJARファイルを選択してください");
-            if(updating.Checked&&(mods.SelectedIndex<0||mods.SelectedIndex>=paths.Count))throw new Exception("更新元を正規MOD一覧から選んでください");
+            if(!removing.Checked&&!File.Exists(jar.Text))throw new Exception("新しいMODのJARファイルを選択してください");
+            if((updating.Checked||removing.Checked)&&(mods.SelectedIndex<0||mods.SelectedIndex>=paths.Count))throw new Exception("更新元を正規MOD一覧から選んでください");
             var localJar=jar.Text;
-            var filename=Path.GetFileName(localJar);
+            var selected=(updating.Checked||removing.Checked)?paths[mods.SelectedIndex]:"";
+            var filename=removing.Checked?Path.GetFileName(selected):Path.GetFileName(localJar);
             if(filename.Contains('/')||filename.Contains('\\')||!filename.EndsWith(".jar",StringComparison.OrdinalIgnoreCase))throw new Exception("JARのファイル名が不正です");
-            var selected=updating.Checked?paths[mods.SelectedIndex]:"";
-            var action=updating.Checked?"既存MODを更新":"新しいMODを追加";
-            var expectedHash=Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(localJar)));
-            if(integrationJar==null && MessageBox.Show(this,$"{action}\n更新元：{(updating.Checked?selected:"新規追加")}\n新しいファイル：{filename}\nSHA256：{expectedHash}\n\nGitHubにアップロードし、EXE・Checkをビルドして自動更新を公開します。","確認",MessageBoxButtons.YesNo,MessageBoxIcon.Question)!=DialogResult.Yes)return;
+            var action=removing.Checked?"既存MODを削除":updating.Checked?"既存MODを更新":"新しいMODを追加";
+            var expectedHash=removing.Checked?"":Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(localJar)));
+            if(integrationJar==null){
+                var prompt=removing.Checked?
+                    $"【MOD削除の確認】\\n\\n削除対象：{selected}\\n\\nランチャーの配布MOD一覧とEXE内のMODを除去し、Checkの許可ハッシュも削除します。\\n次回の自動更新で利用者のmodsフォルダーからも除去されます。\\nこの操作は全利用者へ反映されます。\\n\\n本当に削除しますか？":
+                    $"{action}\\n更新元：{(updating.Checked?selected:"新規追加")}\\n新しいファイル：{filename}\\nSHA256：{expectedHash}\\n\\nGitHubにアップロードし、EXE・Checkをビルドして自動更新を公開します。";
+                if(MessageBox.Show(this,prompt,"確認",MessageBoxButtons.YesNo,removing.Checked?MessageBoxIcon.Warning:MessageBoxIcon.Question)!=DialogResult.Yes)return;
+            }
             Busy(true);
             var x=await Gh(true);
             await GhRun(x,"auth","status");
@@ -244,13 +260,29 @@ internal sealed class Window : Form {
                 Log((string.IsNullOrWhiteSpace(sharedKey.Text)?"GitHubログイン利用：":"共有公開キー利用：")+who.Trim()+" / "+Repo);
                 Log("GitHubがリポジトリの書込権限を検証します");
             } else {Log("Integration test mode: Actions job uses scoped GitHub token");}
-            var stage="publisher-input-"+DateTimeOffset.UtcNow.ToUnixTimeSeconds()+"-"+Guid.NewGuid().ToString("N")[..8];
-            State("1/4 新しいJARをGitHubへ転送中...");
-            Log("受け渡し領域を作成: "+stage);
-            await GhRun(x,"release","create",stage,"--repo",Repo,"--draft","--target","main","--title","MOD input "+stage,"--notes","Temporary staging asset. Automatically built by PiriCraft MOD Publisher.");
-            await GhRun(x,"release","upload",stage,localJar,"--repo",Repo);
+            // Re-check the authoritative manifest immediately before dispatch.
+            using(var checkReq=new HttpRequestMessage(HttpMethod.Get,Manifest+"?fresh="+DateTime.UtcNow.Ticks)){
+                checkReq.Headers.CacheControl=new System.Net.Http.Headers.CacheControlHeaderValue{NoCache=true,NoStore=true};
+                using var checkRes=await http.SendAsync(checkReq);checkRes.EnsureSuccessStatusCode();
+                using var official=JsonDocument.Parse(await checkRes.Content.ReadAsStringAsync());
+                var found=official.RootElement.GetProperty("files").EnumerateArray().Any(e=>(e.GetProperty("path").GetString()??"")==selected);
+                if((updating.Checked||removing.Checked)&&!found)
+                    throw new Exception("選択したMODは既に正規一覧にありません。一覧を更新してから操作してください: "+selected);
+                if(adding.Checked&&official.RootElement.GetProperty("files").EnumerateArray().Any(e=>(e.GetProperty("path").GetString()??"")=="mods/"+filename))
+                    throw new Exception("同名のMODが既に登録されています。一覧を更新してください: "+filename);
+            }
+            var stage=removing.Checked?"":"publisher-input-"+DateTimeOffset.UtcNow.ToUnixTimeSeconds()+"-"+Guid.NewGuid().ToString("N")[..8];
+            if(!removing.Checked){
+                State("1/4 新しいJARをGitHubへ転送中...");
+                Log("受け渡し領域を作成: "+stage);
+                await GhRun(x,"release","create",stage,"--repo",Repo,"--draft","--target","main","--title","MOD input "+stage,"--notes","Temporary staging asset. Automatically built by PiriCraft MOD Publisher.");
+                await GhRun(x,"release","upload",stage,localJar,"--repo",Repo);
+            } else {
+                State("1/4 削除対象を検証済み");
+                Log("削除対象: "+selected);
+            }
             State("2/4 GitHubにビルドを依頼中...");
-            await GhRun(x,"workflow","run","publish-mod-from-app.yml","--repo",Repo,"--ref","main","-f","mode="+(updating.Checked?"update":"add"),"-f","target="+selected,"-f","stage_tag="+stage,"-f","filename="+filename,"-f","sha256="+expectedHash,"-f","dry_run="+(integrationJar!=null && acceptanceTarget==null?"true":"false"));
+            await GhRun(x,"workflow","run","publish-mod-from-app.yml","--repo",Repo,"--ref","main","-f","mode="+(removing.Checked?"remove":updating.Checked?"update":"add"),"-f","target="+selected,"-f","stage_tag="+stage,"-f","filename="+filename,"-f","sha256="+expectedHash,"-f","dry_run="+(integrationJar!=null && acceptanceTarget==null?"true":"false"));
             State("3/4 GitHubでEXE・Checkをビルドし、Windows起動テストを実行中...");
             Log("クラウドビルド開始。このPCにソース、dotnet、Java、Gradleは不要です。");
             string? runId=null;
@@ -268,7 +300,7 @@ internal sealed class Window : Form {
                 if(conclusion!="success")throw new Exception("GitHubビルド失敗: "+conclusion+"。詳細: https://github.com/"+Repo+"/actions/runs/"+runId);
                 State(integrationJar!=null && acceptanceTarget==null?"4/4 テスト成功（本番公開は変更なし）":"4/4 公開成功。ランチャーの自動更新が有効です。");
                 Log("完成: https://github.com/"+Repo+"/actions/runs/"+runId);
-                try{await GhRun(x,"release","delete",stage,"--repo",Repo,"--yes","--cleanup-tag");}catch(Exception e){Log("一時アップロードの自動削除失敗（公開には影響しません）: "+e.Message);}
+                if(!removing.Checked)try{await GhRun(x,"release","delete",stage,"--repo",Repo,"--yes","--cleanup-tag");}catch(Exception e){Log("一時アップロードの自動削除失敗（公開には影響しません）: "+e.Message);}
                 if(integrationJar!=null){Log(acceptanceTarget==null?"APP_TO_GITHUB_ACTIONS_END_TO_END_PASSED":"APP_TO_REAL_PRODUCTION_AUTOUPDATE_PASSED");Environment.ExitCode=0;Close();return;}
                 MessageBox.Show(this,"ランチャーとCheckのビルド、公開、自動更新の設定が完了しました。","公開成功");
                 await Reload();return;

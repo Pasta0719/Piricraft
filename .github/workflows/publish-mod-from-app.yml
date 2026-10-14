@@ -4,25 +4,25 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: update or add
+        description: update, add or remove
         required: true
         type: choice
-        options: [update, add]
+        options: [update, add, remove]
       target:
-        description: Original mods/filename.jar when updating
+        description: Original mods/filename.jar when updating or removing
         required: false
         type: string
       stage_tag:
-        description: Staging release holding incoming JAR
-        required: true
+        description: Staging release (required for add/update; unused for remove)
+        required: false
         type: string
       filename:
-        description: New JAR basename
+        description: New JAR basename (or removed MOD basename)
         required: true
         type: string
       sha256:
-        description: Uploaded JAR SHA-256
-        required: true
+        description: Uploaded JAR SHA-256 (unused for remove)
+        required: false
         type: string
       dry_run:
         description: Build and test without publishing

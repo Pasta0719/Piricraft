@@ -26,7 +26,6 @@ with zipfile.ZipFile("work/test-publisher-cloud.jar","w") as z:
   if($mode -eq 'remove'){
     if($filename -ne [IO.Path]::GetFileName($target)){throw 'Removal filename must equal target basename'}
     if($env:INPUT_SHA256){throw 'Removal must not provide a JAR hash'}
-    if($stage -notmatch '^remove-[a-z0-9-]{1,70}
   } else {
     gh release download $stage --repo $repo --pattern $filename --dir work
     if($LASTEXITCODE -ne 0){throw 'Cannot download staged JAR'}

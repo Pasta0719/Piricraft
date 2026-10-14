@@ -248,8 +248,8 @@ internal sealed class Window : Form {
             var expectedHash=removing.Checked?"":Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(localJar)));
             if(integrationJar==null){
                 var prompt=removing.Checked?
-                    $"【MOD削除の確認】\\n\\n削除対象：{selected}\\n\\nランチャーの配布MOD一覧とEXE内のMODを除去し、Checkの許可ハッシュも削除します。\\n次回の自動更新で利用者のmodsフォルダーからも除去されます。\\nこの操作は全利用者へ反映されます。\\n\\n本当に削除しますか？":
-                    $"{action}\\n更新元：{(updating.Checked?selected:"新規追加")}\\n新しいファイル：{filename}\\nSHA256：{expectedHash}\\n\\nGitHubにアップロードし、EXE・Checkをビルドして自動更新を公開します。";
+                    $"【MOD削除の確認】\n\n削除対象：{selected}\n\nランチャーの配布MOD一覧とEXE内のMODを除去し、Checkの許可ハッシュも削除します。\n次回の自動更新で利用者のmodsフォルダーからも除去されます。\nこの操作は全利用者へ反映されます。\n\n本当に削除しますか？":
+                    $"{action}\n更新元：{(updating.Checked?selected:"新規追加")}\n新しいファイル：{filename}\nSHA256：{expectedHash}\n\nGitHubにアップロードし、EXE・Checkをビルドして自動更新を公開します。";
                 if(MessageBox.Show(this,prompt,"確認",MessageBoxButtons.YesNo,removing.Checked?MessageBoxIcon.Warning:MessageBoxIcon.Question)!=DialogResult.Yes)return;
             }
             Busy(true);
@@ -271,7 +271,7 @@ internal sealed class Window : Form {
                 if(adding.Checked&&official.RootElement.GetProperty("files").EnumerateArray().Any(e=>(e.GetProperty("path").GetString()??"")=="mods/"+filename))
                     throw new Exception("同名のMODが既に登録されています。一覧を更新してください: "+filename);
             }
-            var stage=removing.Checked?"":"publisher-input-"+DateTimeOffset.UtcNow.ToUnixTimeSeconds()+"-"+Guid.NewGuid().ToString("N")[..8];
+            var stage=(removing.Checked?"remove-":"publisher-input-")+DateTimeOffset.UtcNow.ToUnixTimeSeconds()+"-"+Guid.NewGuid().ToString("N")[..8];
             if(!removing.Checked){
                 State("1/4 新しいJARをGitHubへ転送中...");
                 Log("受け渡し領域を作成: "+stage);

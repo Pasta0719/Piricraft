@@ -107,6 +107,13 @@ if($dry){
     if(!$again.HasExited){Stop-Process -Id $again.Id -Force -ErrorAction SilentlyContinue}
     Write-Host 'DRY_ADD_THEN_UPDATE_AND_RESTART_PASS'
   }
+  if($fixture){
+    dotnet run --project PiriCraftModPublisher/ServerBuilder/PiriCraftPatch.csproj -c Release -- patch work/PiriCraft.updated.dll work/PiriCraft.removed.dll work/updated-manifest.json work/removed-manifest.json __NO_JAR_ON_REMOVE__ remove "mods/$filename" $following $repo "launcher-v$following"
+    if($LASTEXITCODE -ne 0){throw 'Dry-run MOD removal failed'}
+    $removed=Get-Content work/removed-manifest.json -Raw | ConvertFrom-Json
+    if(@($removed.files | Where-Object { $_.path -eq "mods/$filename" }).Count -ne 0){throw 'Dry-run removal left target in manifest'}
+    Write-Host 'DRY_ADD_REMOVE_AND_MANIFEST_VERIFICATION_PASSED'
+  }
   Write-Host 'DRY_RUN_COMPLETE: no release or automatic update changes'
   exit 0
 }

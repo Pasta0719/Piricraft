@@ -46,11 +46,11 @@ class Program {
         if(current==null)throw new Exception("Selected existing MOD not present in official manifest: "+target);
       }
       if(mode=="remove") {
-        var oldName=Path.GetFileName(target);
+        var removeName=Path.GetFileName(target);
         var resourceManifest=res.Single(x=>x.Name=="PiriCraft.ModsManifest.json");
         var localEntries=JsonNode.Parse(resourceManifest.GetResourceData())!.AsArray();
-        var installed=localEntries.Select(x=>x!.AsObject()).SingleOrDefault(x=>(string?)x["fileName"]==oldName);
-        if(installed==null)throw new Exception("Selected MOD missing from embedded launcher manifest: "+oldName);
+        var installed=localEntries.Select(x=>x!.AsObject()).SingleOrDefault(x=>(string?)x["fileName"]==removeName);
+        if(installed==null)throw new Exception("Selected MOD missing from embedded launcher manifest: "+removeName);
         var embeddedName=(string?)installed["resource"];
         if(!string.IsNullOrWhiteSpace(embeddedName)) {
           var oldResource=assembly.MainModule.Resources.FirstOrDefault(x=>x.Name==embeddedName);
@@ -78,7 +78,7 @@ class Program {
         using var verified=AssemblyDefinition.ReadAssembly(dllOut);
         var resources=verified.MainModule.Resources.OfType<EmbeddedResource>().ToArray();
         var records=JsonNode.Parse(resources.Single(x=>x.Name=="PiriCraft.ModsManifest.json").GetResourceData())!.AsArray();
-        if(records.Any(x=>(string?)x?["fileName"]==oldName))throw new Exception("Removed MOD still in embedded manifest");
+        if(records.Any(x=>(string?)x?["fileName"]==removeName))throw new Exception("Removed MOD still in embedded manifest");
         if(remoteFiles.Any(x=>(string?)x?["path"]==target))throw new Exception("Removed MOD still in update manifest");
         if(!string.IsNullOrWhiteSpace(embeddedName)&&resources.Any(x=>x.Name==embeddedName))
           throw new Exception("Removed MOD remains embedded in EXE");

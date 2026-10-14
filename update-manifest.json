@@ -2,10 +2,10 @@
   "manifestVersion": 1,
   "deleteUnknownMods": true,
   "launcher": {
-    "version": "1.1.38",
-    "url": "https://github.com/Pasta0719/Piricraft/releases/download/launcher-v1.1.38/PiriCraft.exe",
-    "sha256": "C60332118D4032E3F31FA3929DDE38673215070295506D8C42ED9DD34F8CDFA9",
-    "size": 97860837
+    "version": "1.1.39",
+    "url": "https://github.com/Pasta0719/Piricraft/releases/download/launcher-v1.1.39/PiriCraft.exe",
+    "sha256": "96F8044CA5BCCD8E8B3925419639F2E4577AA941D4BF1CDBA7B6817D4013BF07",
+    "size": 97868005
   },
   "files": [
     {
@@ -118,16 +118,16 @@
       "resource": "PiriCraft.Mods.upload_4c684496b6cf622f.jar"
     },
     {
-      "path": "mods/PirihythmInput-1.0.1.jar",
-      "sha256": "D665BAC5369004D21053632DF600B784A4A470D494B34475197EA737B0726FD1",
+      "path": "mods/PirihythmInput-1.2.0.jar",
+      "sha256": "EB29A07DAB432F2C2D21DDE625A28CABF86126FA942988032267ABE1EFA3FF07",
       "source": "embedded",
-      "resource": "PiriCraft.Mods.upload_d665bac5369004d2.jar"
+      "resource": "PiriCraft.Mods.upload_eb29a07dab432f2c.jar"
     }
   ],
   "checkServer": {
-    "size": 21781,
-    "sha256": "12FE45822CDE083412EC9A20292D015CB5DAB7FC3B4A9C47ABE6484A068E366D",
-    "version": "1.1.38",
-    "url": "https://github.com/Pasta0719/Piricraft/releases/download/launcher-v1.1.38/PiricraftCheckServer-1.0.0.jar"
+    "sha256": "3D10AF2D0B4C57DE20DE265EEE2C40631F5ED743D77425FB573F0DB41DEE1972",
+    "url": "https://github.com/Pasta0719/Piricraft/releases/download/launcher-v1.1.39/PiricraftCheckServer-1.0.0.jar",
+    "size": 21782,
+    "version": "1.1.39"
   }
 }

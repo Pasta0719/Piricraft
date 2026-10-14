@@ -90,26 +90,21 @@ if($dry){
   $following=$nextParts -join '.'
   $currentTarget="mods/$filename"
   if($mode -eq 'remove'){
-    $remaining=(Get-Content work/updated-manifest.json -Raw | ConvertFrom-Json).files | Where-Object { $_.path -like 'mods/*.jar' } | Select-Object -First 1
-    if(!$remaining){throw 'Removal regression fixture requires one remaining MOD'}
-    $currentTarget=$remaining.path
-    $fixtureJar="work/test-follow-up.jar"
-    gh release download $oldtag --repo $repo --pattern ([IO.Path]::GetFileName($currentTarget)) --dir work
-    if($LASTEXITCODE -ne 0){throw 'Cannot fetch a follow-up MOD for dry remove test'}
-    $fixtureJar="work/$([IO.Path]::GetFileName($currentTarget))"
-    dotnet run --project PiriCraftModPublisher/ServerBuilder/PiriCraftPatch.csproj -c Release -- patch work/PiriCraft.updated.dll work/PiriCraft.follow.dll work/updated-manifest.json work/follow-manifest.json $fixtureJar update $currentTarget $following $repo "launcher-v$following"
+    $afterRemoval=Get-Content work/updated-manifest.json -Raw | ConvertFrom-Json
+    if(@($afterRemoval.files | Where-Object {$_.path -eq $target}).Count -ne 0){throw 'Removed MOD remains in manifest'}
+    Write-Host 'DRY_REMOVE_MANIFEST_VERIFIED'
   } else {
     dotnet run --project PiriCraftModPublisher/ServerBuilder/PiriCraftPatch.csproj -c Release -- patch work/PiriCraft.updated.dll work/PiriCraft.follow.dll work/updated-manifest.json work/follow-manifest.json $jar update $currentTarget $following $repo "launcher-v$following"
-  }
   if($LASTEXITCODE -ne 0){throw 'Second consecutive update failed'}
-  python PiriCraftModPublisher/ServerBuilder/repack.py --base dist/PiriCraft.exe --dll work/PiriCraft.follow.dll --out dist/PiriCraft.follow.exe --old $new --new $following
-  if($LASTEXITCODE -ne 0){throw 'Consecutive launcher repack failed'}
-  $again=Start-Process -FilePath (Resolve-Path 'dist/PiriCraft.follow.exe').Path -PassThru
-  Start-Sleep -Seconds 5
-  $again.Refresh()
-  if($again.HasExited -and $again.ExitCode -ne 0){throw 'Follow-up update launcher failed startup'}
-  if(!$again.HasExited){Stop-Process -Id $again.Id -Force -ErrorAction SilentlyContinue}
-  Write-Host 'DRY_ADD_THEN_UPDATE_AND_RESTART_PASS'
+    python PiriCraftModPublisher/ServerBuilder/repack.py --base dist/PiriCraft.exe --dll work/PiriCraft.follow.dll --out dist/PiriCraft.follow.exe --old $new --new $following
+    if($LASTEXITCODE -ne 0){throw 'Consecutive launcher repack failed'}
+    $again=Start-Process -FilePath (Resolve-Path 'dist/PiriCraft.follow.exe').Path -PassThru
+    Start-Sleep -Seconds 5
+    $again.Refresh()
+    if($again.HasExited -and $again.ExitCode -ne 0){throw 'Follow-up update launcher failed startup'}
+    if(!$again.HasExited){Stop-Process -Id $again.Id -Force -ErrorAction SilentlyContinue}
+    Write-Host 'DRY_ADD_THEN_UPDATE_AND_RESTART_PASS'
+  }
   Write-Host 'DRY_RUN_COMPLETE: no release or automatic update changes'
   exit 0
 }

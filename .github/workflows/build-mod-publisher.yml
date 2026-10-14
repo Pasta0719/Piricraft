@@ -57,10 +57,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag='mod-publisher-v4.3.0'
+          $tag='mod-publisher-v4.4.0'
           gh release view $tag --repo "${{ github.repository }}" *> $null
           if ($LASTEXITCODE -ne 0) {
-            gh release create $tag --repo "${{ github.repository }}" --title "PiriCraft MOD Publisher 4.3.0 (shared key, cloud publishing)" --notes "Single-file Windows GUI. Select official existing MOD or add a new JAR; cloud GitHub Actions builds and tests the launcher and Check server and activates auto-update. No local development environment. Collaborators may use their own repo-Write GitHub login or a separately distributed fine-grained repo-scoped publishing token. No token is embedded in EXE or stored on disk."
+            gh release create $tag --repo "${{ github.repository }}" --title "PiriCraft MOD Publisher 4.4.0 (add, update, remove)" --notes "Single-file Windows GUI. Select an official MOD to update or delete, or add a new JAR; cloud GitHub Actions builds and tests the launcher and Check server and activates auto-update. No local development environment. Collaborators may use their own repo-Write GitHub login or a separately distributed fine-grained repo-scoped publishing token. No token is embedded in EXE or stored on disk."
             if ($LASTEXITCODE -ne 0) { throw 'Release creation failed' }
           }
           gh release upload $tag publisher-dist/PiriCraftModPublisher.exe --repo "${{ github.repository }}" --clobber

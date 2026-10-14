@@ -35,8 +35,8 @@ class Program {
       string tag=args[10];
       if(mode!="update"&&mode!="add"&&mode!="remove")throw new Exception("mode must be update/add/remove");
       if(!System.Text.RegularExpressions.Regex.IsMatch(tag,@"^launcher-v\d+\.\d+\.\d+$"))throw new Exception("Invalid target release tag");
-      var bytes=File.ReadAllBytes(jarFile);
-      string hash=Sha(bytes),newName=Path.GetFileName(jarFile);
+      var bytes=mode=="remove"?Array.Empty<byte>():File.ReadAllBytes(jarFile);
+      string hash=mode=="remove"?"":Sha(bytes),newName=mode=="remove"?Path.GetFileName(target):Path.GetFileName(jarFile);
       if(!newName.EndsWith(".jar",StringComparison.OrdinalIgnoreCase)||newName.Contains('/')||newName.Contains('\\'))throw new Exception("Invalid JAR name");
       var remote=JsonNode.Parse(File.ReadAllText(manifestIn))!.AsObject();
       var remoteFiles=remote["files"]!.AsArray();

@@ -74,7 +74,7 @@ class Program {
         }
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(dllOut))!);
         assembly.Write(dllOut);
-        File.WriteAllText(manifestOut,remote.ToJsonString(new JsonSerializerOptions{WriteIndented=true})+"\\n");
+        File.WriteAllText(manifestOut,remote.ToJsonString(new JsonSerializerOptions{WriteIndented=true})+"\n");
         using var verified=AssemblyDefinition.ReadAssembly(dllOut);
         var resources=verified.MainModule.Resources.OfType<EmbeddedResource>().ToArray();
         var records=JsonNode.Parse(resources.Single(x=>x.Name=="PiriCraft.ModsManifest.json").GetResourceData())!.AsArray();

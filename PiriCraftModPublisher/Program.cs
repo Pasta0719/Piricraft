@@ -82,7 +82,7 @@ internal sealed class Window : Form {
         this.integrationJar=integrationJar;
         this.acceptanceTarget=acceptanceTarget;
         if(!string.IsNullOrEmpty(integrationKey))sharedKey.Text=integrationKey;
-        Text="PiriCraft MOD Publisher v4.3";Font=new Font("Yu Gothic UI",10);
+        Text="PiriCraft MOD Publisher v4.4";Font=new Font("Yu Gothic UI",10);
         ClientSize=new Size(925,730);MinimumSize=new Size(805,660);
         StartPosition=FormStartPosition.CenterScreen;BackColor=Color.FromArgb(247,249,253);
         Directory.CreateDirectory(dir);

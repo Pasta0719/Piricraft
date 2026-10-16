@@ -2,10 +2,10 @@
   "manifestVersion": 1,
   "deleteUnknownMods": true,
   "launcher": {
-    "version": "1.1.40",
-    "url": "https://github.com/Pasta0719/Piricraft/releases/download/launcher-v1.1.40/PiriCraft.exe",
-    "sha256": "61AC0E49525F66B58D5DFFBE3BCDC344D1B7A0FB8977A93A66811F1A9D5CA0E7",
-    "size": 97716965
+    "version": "1.1.41",
+    "url": "https://github.com/Pasta0719/Piricraft/releases/download/launcher-v1.1.41/PiriCraft.exe",
+    "sha256": "458D2E95E7DBF4F8D03F9D4CCD9674A02DB4EF089A9A10FB98CBFB7E79608A96",
+    "size": 95608037
   },
   "files": [
     {
@@ -95,9 +95,9 @@
     },
     {
       "path": "mods/piri-juggler-fabric-1.0.0.jar",
-      "sha256": "0FA5B2C12E4E8D59D728F5485ECFC6A002CA6B04750D2E8BC775B3F0DFA2B083",
+      "sha256": "84BAD63E7FD2FFAAB6ADC24E9B322B619EDD71C2E871FD1F163FD6FC391C473E",
       "source": "embedded",
-      "resource": "PiriCraft.Mods.upload_0fa5b2c12e4e8d59.jar"
+      "resource": "PiriCraft.Mods.upload_84bad63e7fd2ffaa.jar"
     },
     {
       "path": "mods/piricraft-check-1.0.0.jar",
@@ -119,9 +119,9 @@
     }
   ],
   "checkServer": {
-    "version": "1.1.40",
-    "size": 21716,
-    "url": "https://github.com/Pasta0719/Piricraft/releases/download/launcher-v1.1.40/PiricraftCheckServer-1.0.0.jar",
-    "sha256": "5886D0B7D87D9B103101B237E4D8F355960450EA66A20F579D5063970271706D"
+    "url": "https://github.com/Pasta0719/Piricraft/releases/download/launcher-v1.1.41/PiricraftCheckServer-1.0.0.jar",
+    "version": "1.1.41",
+    "size": 21718,
+    "sha256": "458A4D45530E4EB7DC7171DF547A390B558DE14B6689A6234E55E37CB1F44FFC"
   }
 }

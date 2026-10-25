@@ -1,0 +1,115 @@
+PiriCraft v1.1.43 binary auth audit
+binary_size=97739493
+sha256=783b8fa3b1405d8519718a2202ff9fbb1ba850292784d644930125027cb173b1
+bundle_signature=8357736
+SECTION EXE bytes=97739493
+HIT Microsoft.Identity.Client ascii=16 utf16=0
+HIT PublicClientApplication ascii=1 utf16=0
+HIT Entra ascii=12 utf16=0
+HIT XboxLive ascii=1 utf16=1
+AUTH_URL http://crl.microsoft.com/pki/crl/products/MicRooCerAut_2010-06-23.crl0Z
+AUTH_URL http://schemas.microsoft.com/winfx/2006/xaml
+AUTH_URL http://schemas.microsoft.com/winfx/2006/xaml/presentation
+AUTH_URL http://www.microsoft.com/pki/certs/MicRooCerAut_2010-06-23.crt0
+AUTH_URL http://www.microsoft.com/pkiops/Docs/Repository.htm0
+AUTH_URL http://www.microsoft.com/pkiops/certs/Microsoft%20Time-Stamp%20PCA%202010
+AUTH_URL http://www.microsoft.com/pkiops/certs/Microsoft%20Windows%20Code%20Signing%20PCA%202024.crt0
+AUTH_URL http://www.microsoft.com/pkiops/crl/Microsoft%20Time-Stamp%20PCA%202010
+AUTH_URL http://www.microsoft.com/pkiops/crl/Microsoft%20Windows%20Code%20Signing%20PCA%202024.crl0w
+AUTH_URL http://www.microsoft.com0
+SECTION PiriCraft.dll bytes=21576704
+HIT Microsoft.Identity.Client ascii=1 utf16=0
+HIT PublicClientApplication ascii=1 utf16=0
+HIT XboxLive ascii=1 utf16=1
+AUTH_URL http://schemas.microsoft.com/winfx/2006/xaml
+AUTH_URL http://schemas.microsoft.com/winfx/2006/xaml/presentation
+SECTION CmlLib.Core.Auth.Microsoft.dll bytes=45568
+HIT user.auth.xboxlive.com ascii=0 utf16=1
+HIT api.minecraftservices.com ascii=0 utf16=4
+HIT XboxLive ascii=1 utf16=1
+AUTH_URL https://github.com/CmlLib/CmlLib.Core.Auth.Microsoft
+SECTION Microsoft.Identity.Client.dll bytes=1005600
+HIT login.microsoftonline.com ascii=0 utf16=12
+HIT login.microsoft.com ascii=0 utf16=3
+HIT login.microsoftonline ascii=0 utf16=16
+HIT oauth2/v2.0 ascii=0 utf16=7
+HIT microsoftonline ascii=0 utf16=18
+HIT Microsoft.Identity.Client ascii=303 utf16=9
+HIT PublicClientApplication ascii=10 utf16=8
+HIT AcquireToken ascii=85 utf16=18
+HIT DeviceCode ascii=57 utf16=7
+HIT Entra ascii=0 utf16=1
+HIT Azure ascii=35 utf16=32
+HIT client_id ascii=2 utf16=6
+HIT MicrosoftAccount ascii=1 utf16=0
+AUTH_URL http://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0
+AUTH_URL http://crl.microsoft.com/pki/crl/products/MicRooCerAut_2010-06-23.crl0Z
+AUTH_URL http://go.microsoft.com/fwlink/?LinkID=391919
+AUTH_URL http://schemas.microsoft.com/netfx/2013/01/metadata
+AUTH_URL http://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0
+AUTH_URL http://www.microsoft.com/pki/certs/MicRooCerAut_2010-06-23.crt0
+AUTH_URL http://www.microsoft.com/pkiops/Docs/Repository.htm0
+AUTH_URL http://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0
+AUTH_URL http://www.microsoft.com/pkiops/certs/Microsoft%20Time-Stamp%20PCA%202010
+AUTH_URL http://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a
+AUTH_URL http://www.microsoft.com/pkiops/crl/Microsoft%20Time-Stamp%20PCA%202010
+AUTH_URL http://www.microsoft.com/pkiops/docs/primarycps.htm0
+AUTH_URL http://www.microsoft.com0
+AUTH_URL https://github.com/AzureAD/microsoft-authentication-library-for-dotnet
+SECTION Microsoft.Identity.Client.Extensions.Msal.dll bytes=66592
+HIT login.microsoftonline.com ascii=0 utf16=2
+HIT login.microsoftonline ascii=0 utf16=2
+HIT microsoftonline ascii=0 utf16=2
+HIT Microsoft.Identity.Client ascii=10 utf16=5
+HIT PublicClientApplication ascii=2 utf16=0
+HIT Azure ascii=1 utf16=0
+AUTH_URL http://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0
+AUTH_URL http://crl.microsoft.com/pki/crl/products/MicRooCerAut_2010-06-23.crl0Z
+AUTH_URL http://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0
+AUTH_URL http://www.microsoft.com/pki/certs/MicRooCerAut_2010-06-23.crt0
+AUTH_URL http://www.microsoft.com/pkiops/Docs/Repository.htm0
+AUTH_URL http://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0
+AUTH_URL http://www.microsoft.com/pkiops/certs/Microsoft%20Time-Stamp%20PCA%202010
+AUTH_URL http://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a
+AUTH_URL http://www.microsoft.com/pkiops/crl/Microsoft%20Time-Stamp%20PCA%202010
+AUTH_URL http://www.microsoft.com/pkiops/docs/primarycps.htm0
+AUTH_URL http://www.microsoft.com0
+AUTH_URL https://github.com/AzureAD/microsoft-authentication-library-for-dotnet
+SECTION Microsoft.IdentityModel.Abstractions.dll bytes=18968
+HIT Azure ascii=2 utf16=0
+AUTH_URL http://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0
+AUTH_URL http://crl.microsoft.com/pki/crl/products/MicRooCerAut_2010-06-23.crl0Z
+AUTH_URL http://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0
+AUTH_URL http://www.microsoft.com/pki/certs/MicRooCerAut_2010-06-23.crt0
+AUTH_URL http://www.microsoft.com/pkiops/Docs/Repository.htm0
+AUTH_URL http://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0
+AUTH_URL http://www.microsoft.com/pkiops/certs/Microsoft%20Time-Stamp%20PCA%202010
+AUTH_URL http://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a
+AUTH_URL http://www.microsoft.com/pkiops/crl/Microsoft%20Time-Stamp%20PCA%202010
+AUTH_URL http://www.microsoft.com/pkiops/docs/primarycps.htm0
+AUTH_URL http://www.microsoft.com0
+AUTH_URL https://github.com/AzureAD/azure-activedirectory-identitymodel-extensions-for-dotnet
+SECTION XboxAuthNet.dll bytes=84480
+HIT login.microsoftonline.com ascii=0 utf16=1
+HIT login.live.com ascii=0 utf16=6
+HIT login.microsoftonline ascii=0 utf16=1
+HIT oauth2/v2.0 ascii=0 utf16=1
+HIT microsoftonline ascii=0 utf16=1
+HIT Microsoft.Identity.Client ascii=2 utf16=0
+HIT user.auth.xboxlive.com ascii=0 utf16=4
+HIT xsts.auth.xboxlive.com ascii=0 utf16=2
+HIT Azure ascii=1 utf16=0
+HIT client_id ascii=1 utf16=0
+HIT XboxLive ascii=10 utf16=15
+AUTH_URL https://github.com/AlphaBs/XboxAuthNet
+SECTION XboxAuthNet.Game.dll bytes=75264
+HIT Azure ascii=1 utf16=0
+HIT XboxLive ascii=4 utf16=1
+AUTH_URL https://github.com/CmlLib/CmlLib.Core.Auth.Microsoft
+SECTION XboxAuthNet.Game.Msal.dll bytes=26112
+HIT Microsoft.Identity.Client ascii=2 utf16=0
+HIT PublicClientApplication ascii=2 utf16=0
+HIT AcquireToken ascii=7 utf16=0
+HIT DeviceCode ascii=10 utf16=2
+HIT XboxLive ascii=0 utf16=1
+AUTH_URL https://github.com/AlphaBs/XboxAuthNet

@@ -1,0 +1,66 @@
+name: Inspect current launcher Microsoft auth
+on:
+  push:
+    paths:
+      - '.github/workflows/inspect-launcher-auth.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: windows-latest
+    steps:
+      - name: Download the published launcher
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          $url='https://github.com/Pasta0719/Piricraft/releases/download/launcher-v1.1.43/PiriCraft.exe'
+          Invoke-WebRequest -Uri $url -OutFile PiriCraft.exe
+          Write-Host "SHA256:" (Get-FileHash PiriCraft.exe -Algorithm SHA256).Hash
+      - name: Inspect bundled .NET assembly and Microsoft auth markers
+        shell: pwsh
+        run: |
+          @'
+          import pathlib,re,struct,zlib,collections
+          b=pathlib.Path("PiriCraft.exe").read_bytes()
+          sig=bytes.fromhex("8b1202b96a612038727b930214d7a03213f5b9e6efae3318ee3b2dce24b36aae")
+          i=b.find(sig)
+          print("BUNDLE_SIGNATURE_POSITION",i)
+          dll=b
+          if i>=8:
+              p=struct.unpack_from("<Q",b,i-8)[0]
+              major,minor,num=struct.unpack_from("<III",b,p)
+              print("BUNDLE",major,minor,num)
+              p+=12
+              def read7(p):
+                  n=0;shift=0
+                  while True:
+                      v=b[p];p+=1;n|=(v&127)<<shift;shift+=7
+                      if not v&128:return n,p
+              def st(p):
+                  n,p=read7(p);return b[p:p+n].decode("utf-8","replace"),p+n
+              bid,p=st(p);p+=40
+              for j in range(num):
+                  off,size,comp=struct.unpack_from("<QQQ",b,p);p+=24
+                  ty=b[p];p+=1
+                  name,p=st(p)
+                  if name.lower().endswith(".dll") and ("piricraft" in name.lower() or "identity" in name.lower() or "authentication" in name.lower()):
+                      raw=b[off:off+(comp or size)]
+                      if comp:
+                          try:raw=zlib.decompress(raw,-15)
+                          except Exception as e:print("DECOMP_ERROR",name,str(e));continue
+                      print("ASSEMBLY",name,"size",len(raw))
+                      if name=="PiriCraft.dll":dll=raw
+          patterns=["login.microsoftonline.com","login.live.com","login.microsoft.com","oauth20_authorize","oauth2/v2.0","microsoftonline","Microsoft.Identity.Client","PublicClientApplication","AcquireToken","devicecode","device_code","user.auth.xboxlive.com","xsts.auth.xboxlive.com","api.minecraftservices.com","Azure.Identity","Entra","Azure","client_id","XboxLive","MicrosoftAccount"]
+          for name,blob in [("exe",b),("primary-assembly",dll)]:
+              print("SCAN",name)
+              for term in patterns:
+                  a=term.encode();u=term.encode("utf-16le")
+                  print("MARKER",term,"utf8",blob.lower().count(a.lower()),"utf16",blob.lower().count(u.lower()))
+              for pat in [rb"https?://[a-zA-Z0-9_./?=&:%+\-]{10,220}",rb"(?:[A-Za-z0-9.\-/]{4,100})"]:
+                  if pat.startswith(b"https"):
+                      urls=sorted(set(x.decode("ascii","replace") for x in re.findall(pat,blob)))
+                      for url in urls:
+                          if any(k in url.lower() for k in ["microsoft","xbox","minecraft","azure","live.com"]):print("AUTH_URL",url[:220])
+          '@ | Set-Content -Encoding UTF8 inspect_auth.py
+          python inspect_auth.py

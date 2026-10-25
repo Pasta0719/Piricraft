@@ -1,0 +1,77 @@
+name: Audit PiriCraft launcher authentication and publish result
+on:
+  push:
+    paths:
+      - '.github/workflows/audit-launcher-auth-report.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download current release and audit binary
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          New-Item -ItemType Directory -Force audit-results | Out-Null
+          try {
+            $url='https://github.com/Pasta0719/Piricraft/releases/download/launcher-v1.1.43/PiriCraft.exe'
+            Invoke-WebRequest -Uri $url -OutFile PiriCraft.exe
+            $sha=(Get-FileHash PiriCraft.exe -Algorithm SHA256).Hash
+            @'
+          import pathlib,re,hashlib,datetime,struct,zlib
+          b=pathlib.Path('PiriCraft.exe').read_bytes()
+          lines=['PiriCraft v1.1.43 binary auth audit','binary_size='+str(len(b)),'sha256='+hashlib.sha256(b).hexdigest()]
+          chunks=[('EXE',b)]
+          sig=bytes.fromhex('8b1202b96a612038727b930214d7a03213f5b9e6efae3318ee3b2dce24b36aae')
+          ix=b.find(sig)
+          lines.append('bundle_signature='+str(ix))
+          if ix>=8:
+            p=struct.unpack_from('<Q',b,ix-8)[0]
+            major,minor,num=struct.unpack_from('<III',b,p);p+=12
+            def read7(p):
+              n=0;shift=0
+              while True:
+                x=b[p];p+=1;n|=(x&127)<<shift;shift+=7
+                if x<128:return n,p
+            def readstr(p):
+              n,p=read7(p);return b[p:p+n].decode('utf-8','replace'),p+n
+            _,p=readstr(p);p+=40
+            for j in range(num):
+              off,size,comp=struct.unpack_from('<QQQ',b,p);p+=24
+              ty=b[p];p+=1;name,p=readstr(p)
+              if name.lower().endswith('.dll'):
+                raw=b[off:off+(comp or size)]
+                if comp:
+                  try:raw=zlib.decompress(raw,-15)
+                  except Exception:continue
+                if 'piricraft' in name.lower() or 'identity' in name.lower() or 'auth' in name.lower():
+                  chunks.append((name,raw))
+          needles=['login.microsoftonline.com','login.live.com','login.microsoft.com','login.microsoftonline','oauth2/v2.0','microsoftonline','Microsoft.Identity.Client','PublicClientApplication','AcquireToken','DeviceCode','user.auth.xboxlive.com','xsts.auth.xboxlive.com','api.minecraftservices.com','Azure.Identity','Entra','Azure','client_id','MicrosoftAccount','XboxLive']
+          for name,blob in chunks:
+            lines.append('SECTION '+name+' bytes='+str(len(blob)))
+            for needle in needles:
+              c8=blob.lower().count(needle.encode().lower())
+              c16=blob.lower().count(needle.encode('utf-16le').lower())
+              if c8 or c16:lines.append('HIT '+needle+' ascii='+str(c8)+' utf16='+str(c16))
+            urls=set()
+            for m in re.findall(rb'https?://[a-zA-Z0-9./?_=:%+&\-]{6,200}',blob):
+              u=m.decode('ascii','replace')
+              if any(x in u.lower() for x in ['microsoft','xbox','minecraft','azure','live.com']):urls.add(u)
+            for u in sorted(urls)[:50]:lines.append('AUTH_URL '+u)
+          pathlib.Path('audit-results/launcher-auth-v1.1.43.txt').write_text('\n'.join(lines)+'\n',encoding='utf-8')
+          '@ | Set-Content -Encoding utf8 scan_launcher.py
+            python scan_launcher.py
+          } catch {
+            ("AUDIT ERROR: "+$_.Exception.Message) | Set-Content audit-results/launcher-auth-v1.1.43.txt
+          }
+      - name: Publish the report to main
+        shell: pwsh
+        run: |
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git config user.name 'github-actions[bot]'
+          git add audit-results/launcher-auth-v1.1.43.txt
+          git commit -m 'Record launcher authentication audit result' 
+          if ($LASTEXITCODE -eq 0) { git push }

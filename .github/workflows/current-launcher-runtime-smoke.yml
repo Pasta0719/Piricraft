@@ -1,0 +1,56 @@
+name: Current PiriCraft v1.1.43 runtime smoke test
+on:
+  push:
+    paths:
+      - '.github/workflows/current-launcher-runtime-smoke.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  windows-smoke:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check official release and start actual launcher
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          New-Item -ItemType Directory -Force audit-results | Out-Null
+          $lines=[System.Collections.Generic.List[string]]::new()
+          $lines.Add('PiriCraft v1.1.43 Windows smoke test')
+          $lines.Add(('DATE_UTC '+[DateTime]::UtcNow.ToString('o')))
+          try {
+            $m=Get-Content update-manifest.json -Raw | ConvertFrom-Json
+            if($m.launcher.version -ne '1.1.43'){throw 'Unexpected manifest version'}
+            Invoke-WebRequest -Uri $m.launcher.url -OutFile PiriCraft.exe
+            $sha=(Get-FileHash PiriCraft.exe -Algorithm SHA256).Hash
+            if($sha -ne $m.launcher.sha256){throw 'SHA256 mismatch'}
+            $lines.Add('PASS RELEASE_SHA256 '+$sha)
+            $p=Start-Process -FilePath (Resolve-Path PiriCraft.exe).Path -PassThru
+            Start-Sleep -Seconds 18
+            $p.Refresh()
+            if($p.HasExited){
+              $lines.Add('FAIL LAUNCHER_PROCESS_EXITED code='+$p.ExitCode)
+              $lines.Add('NOTE GUI may exit during self-update, which needs separate interpretation')
+            } else {
+              $lines.Add('PASS LAUNCHER_PROCESS_ALIVE_AFTER_18_SECONDS')
+              Stop-Process -Id $p.Id -Force
+            }
+            $lines.Add('NOT_TESTED MICROSOFT_INTERACTIVE_LOGIN requires authorized live user session')
+            $lines.Add('NOT_TESTED MINECRAFT_LAUNCH requires entitlement and session')
+            $lines.Add('NOT_TESTED LIVE_SERVER_JOIN requires online server and real player session')
+          } catch {
+            $lines.Add('FAIL '+$_.Exception.Message)
+          }
+          $lines | Set-Content -Encoding UTF8 audit-results/current-launcher-runtime-smoke.txt
+          Get-Content audit-results/current-launcher-runtime-smoke.txt
+      - name: Publish test report
+        if: always()
+        shell: pwsh
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add audit-results/current-launcher-runtime-smoke.txt
+          git diff --cached --quiet
+          if ($LASTEXITCODE -ne 0) {git commit -m 'Report current launcher runtime smoke result'; git push}
